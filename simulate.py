@@ -99,34 +99,38 @@ def simulate(number, noise, equilibrium=3000, sample=15000, box=10, radius=1.0, 
         velocities_movie[i] = velocities.T
 
     vr = np.cos(velocities_movie[:, :, 2])
-    vx = (speed * (np.cos(velocities_movie[:, :, 1]) * vr))
-    vy = (speed * (np.sin(velocities_movie[:, :, 1]) * vr))
-    vz = (speed * np.sin(velocities_movie[:, :, 2]))
-    order = np.sqrt(vx.mean()**2 + vy.mean()**2 + vz.mean()**2)
+    vx = (1 * (np.cos(velocities_movie[:, :, 1]) * vr))
+    vy = (1 * (np.sin(velocities_movie[:, :, 1]) * vr))
+    vz = (1 * np.sin(velocities_movie[:, :, 2]))
+    order = np.sqrt(vx.mean(1)**2 + vy.mean(1)**2 + vz.mean(1)**2)
     return order.mean()
 
 
 if __name__ == "__main__":
+    import time
     N = 50
     density = 1.0
     box = (N / density) ** (1/3)
     spd = 0.1
-    noises = np.arange(0.0, 0.5, 0.1)
+    noises = np.arange(0.0, 1.2, 0.2)
     orders = []
+    t0 = time.time()
     for reduced_noise in noises:
         noise = reduced_noise * np.sqrt(density)
         order = simulate(number=N, noise=noise, equilibrium=1000, sample=1000, box=box, radius=1, speed=spd )
         orders.append(order)
+    print(f"Python version: {time.time() - t0:.2f}s")
 
     plt.scatter(noises, orders, color='tomato', facecolor='none')
 
     orders = []
+    t0 = time.time()
     for reduced_noise in noises:
         noise = reduced_noise * np.sqrt(density)
         result = csimulate.vicsek_3d_pbc(N, box, 1.0, noise, spd, 1000, 1000, 1)  # (T, n, 6)
-        order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(1)).mean()
-        print(noise, order)
-        orders.append(order)
+        order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(-1)).mean()
+        orders.append(order / spd)
+    print(f"C++ version: {time.time() - t0:.2f}s")
 
     plt.scatter(noises, orders, color='tomato', marker='+')
     plt.show()

@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit, prange
 
 
-@njit(parallel=True)
+@njit(parallel=True, cache=True)
 def ndot1(A, B):
 
     """
@@ -25,7 +25,7 @@ def ndot1(A, B):
     return C
 
 
-@njit(parallel=True)
+@njit(parallel=True, cache=True)
 def ndot2(A, B):
     """
     Calculate C with
