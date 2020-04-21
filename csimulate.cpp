@@ -30,15 +30,14 @@ py::array_t<double> vicsek_3d_pbc(
      *     - run_steps: the number of simulation steps performed after pre_steps
      *     - jump: every jump steps were recorded in the output numpy array
      */
-    int update_step = floor(r / v0); // the frequency to update the cell list
+    int update_step = floor(r / v0 / 2); // the frequency to update the cell list
     const int offset_frame = 6 * n;  // size of each frame
     int offset = 0;
 
     Vicsek3DPBC system{n, r, eta, box, v0};
-    system.dump("test.xyz");
 
     py::array_t<double> result = py::array_t<double>(run_steps * n * 6);
-    auto buffer_result = result.request();  // result buffer
+    auto buffer_result = result.request();
     auto *ptr_result = (double *) buffer_result.ptr;
 
     for (int step = 0; step < pre_steps; step++){
@@ -48,10 +47,7 @@ py::array_t<double> vicsek_3d_pbc(
         else{
             system.move(false);
         }
-        system.dump("test.xyz");
     }
-
-    system.dump("test.xyz");
 
     for (int step = 0; step < run_steps * jump; step++){
         if (step % update_step == 0){
@@ -81,5 +77,5 @@ py::array_t<double> vicsek_3d_pbc(
 PYBIND11_MODULE(csimulate, m){
     m.doc() = "common simulations for collective behaviours";
     m.def("vicsek_3d_pbc", &vicsek_3d_pbc, docstring_vicsek_3d_pbc,
-           py::return_value_policy::copy);
+           py::return_value_policy::move);
 }

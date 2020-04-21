@@ -60,7 +60,7 @@ void normalise(Coord3D& xyz, double spd){
 
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0) :
         noise(eta), speed(v0), box(box), n(n),
-        positions(3, n), velocities(3, n), cell_list(r, box, true) {
+        positions(3, n), velocities(3, n), cell_list(r*2, box, true) {
         positions.setRandom(3, n);
         positions = (positions + 1) / 2 * box;
         velocities.setRandom(3, n);

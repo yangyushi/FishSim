@@ -107,26 +107,26 @@ def simulate(number, noise, equilibrium=3000, sample=15000, box=10, radius=1.0, 
 
 
 if __name__ == "__main__":
-    N = 150
+    N = 50
     density = 1.0
     box = (N / density) ** (1/3)
     spd = 0.1
     noises = np.arange(0.0, 0.5, 0.1)
     orders = []
-    #for reduced_noise in noises:
-    #    noise = reduced_noise * np.sqrt(density)
-    #    order = simulate( number=N, noise=noise, equilibrium=1000, sample=1000, box=box, radius=1, speed=spd )
-    #    orders.append(order)
-#
-#    plt.scatter(noises, orders, color='tomato', facecolor='none')
+    for reduced_noise in noises:
+        noise = reduced_noise * np.sqrt(density)
+        order = simulate(number=N, noise=noise, equilibrium=1000, sample=1000, box=box, radius=1, speed=spd )
+        orders.append(order)
+
+    plt.scatter(noises, orders, color='tomato', facecolor='none')
 
     orders = []
     for reduced_noise in noises:
         noise = reduced_noise * np.sqrt(density)
-        result = csimulate.vicsek_3d_pbc(N, box, 1.0, noise, spd, 100, 100, 1)
+        result = csimulate.vicsek_3d_pbc(N, box, 1.0, noise, spd, 1000, 1000, 1)  # (T, n, 6)
         order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(1)).mean()
-        print(order)
+        print(noise, order)
         orders.append(order)
 
-    #plt.scatter(noises, orders, color='tomato', marker='+')
+    plt.scatter(noises, orders, color='tomato', marker='+')
     plt.show()
