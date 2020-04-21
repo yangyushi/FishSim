@@ -1,6 +1,7 @@
-CC=g++-9
+CC = g++-9
 CPPFLAGS = -O3 -std=c++14 -I. -Wall -fPIC
-PYFLAGS = `python3 -m pybind11 --includes` `python3-config --ldflags`
+PYFLAGS = `python3 -m pybind11 --includes` `python3-config --ldflags` -L`python3-config --prefix`/lib -I/usr/local/include
+
 
 csimulate`python3-config --extension-suffix`: csimulate.cpp vicsek.o neighbour_list.o
 	$(CC) $(CPPFLAGS) $(PYFLAGS) -shared -o csimulate`python3-config --extension-suffix` csimulate.cpp vicsek.o neighbour_list.o
