@@ -119,9 +119,9 @@ if __name__ == "__main__":
         noise = reduced_noise * np.sqrt(density)
         order = simulate(number=N, noise=noise, equilibrium=1000, sample=1000, box=box, radius=1, speed=spd )
         orders.append(order)
-    print(f"Python version: {time.time() - t0:.2f}s")
+    t_py = time.time() - t0
 
-    plt.scatter(noises, orders, color='tomato', facecolor='none')
+    plt.scatter(noises, orders, color='tomato', s=64, facecolor='none', label=f'Python: {t_py:.2f}s')
 
     orders = []
     t0 = time.time()
@@ -130,7 +130,12 @@ if __name__ == "__main__":
         result = csimulate.vicsek_3d_pbc(N, box, 1.0, noise, spd, 1000, 1000, 1)  # (T, n, 6)
         order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(-1)).mean()
         orders.append(order / spd)
-    print(f"C++ version: {time.time() - t0:.2f}s")
+    t_cpp = time.time() - t0
 
-    plt.scatter(noises, orders, color='tomato', marker='+')
+    plt.scatter(noises, orders, color='teal', marker='+', label=f'C++: {t_cpp:.2f}s', s=72)
+    plt.xlabel('Noise', fontsize=14)
+    plt.ylabel('Dynamical Order', fontsize=14)
+    plt.legend(fontsize=14)
+    plt.tight_layout()
+    plt.savefig('result.pdf')
     plt.show()
