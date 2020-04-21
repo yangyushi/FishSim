@@ -5,7 +5,7 @@ CellList3D::CellList3D(double r_cut, double box, bool pbc) :
     rc(r_cut), box(box), pbc(pbc) {
     ndim = 0;
     size = 0;
-    sc = floor(box / rc);
+    sc = floor(box / rc / 2);
 }
 
 

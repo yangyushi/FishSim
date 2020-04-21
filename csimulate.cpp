@@ -30,7 +30,7 @@ py::array_t<double> vicsek_3d_pbc(
      *     - run_steps: the number of simulation steps performed after pre_steps
      *     - jump: every jump steps were recorded in the output numpy array
      */
-    int update_step = floor(r / v0 / 2); // the frequency to update the cell list
+    int update_step = floor(r / v0); // the frequency to update the cell list
     const int offset_frame = 6 * n;  // size of each frame
     int offset = 0;
 

@@ -60,7 +60,7 @@ void normalise(Coord3D& xyz, double spd){
 
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0) :
         noise(eta), speed(v0), box(box), n(n),
-        positions(3, n), velocities(3, n), cell_list(r*2, box, true) {
+        positions(3, n), velocities(3, n), cell_list(r, box, true) {
         positions.setRandom(3, n);
         positions = (positions + 1) / 2 * box;
         velocities.setRandom(3, n);
@@ -75,42 +75,46 @@ void Vicsek3DPBC::align(){
 
     for (int i = 0; i < this->n; i++){
         v_align << 0, 0, 0;
-        neighbour_num = (dist_mat.row(i) >= 0).count();
+        neighbour_num = 0;
 
         for (int j = 0; j < dist_mat.rows(); j++){
-            if (dist_mat(i, j) >= 0)
+            if (dist_mat(i, j) >= 0){
                 v_align += velocities.col(j);
+                neighbour_num += 1;
+            }
         }
         new_velocities.col(i) << v_align / neighbour_num;
     }
 
-    velocities = new_velocities;
+    velocities << new_velocities;
 }
 
 
 void Vicsek3DPBC::rotate_noise(Coord3D& noise_xyz){
     /*
     * Rotate nosie pointing at (0, 0, 1) to direction xyz 
-    * and then add noise_xyz to xyz
+    * and then add noise_xyz to velocities
+    * here velocities have unit norm
     */
     RotMat F, G, R;
     Vec3D A, B, u, v, w;
-    double x{0}, y{0}, z{0}, r{0}, rxy{0};
+    double x{0}, y{0}, z{0}, rxy{0};
     for (int i = 0; i < this->n; i++){
-        x = velocities(0, i) / this->speed;
-        y = velocities(1, i) / this->speed;
-        z = velocities(2, i) / this->speed;
+        x = velocities(0, i);
+        y = velocities(1, i);
+        z = velocities(2, i);
         rxy = sqrt(1 - z * z);
         A << 0, 0, 1;
         B << x, y, z;
         u = A;
-        v = B - (A * B).sum();
-        v = v / v.matrix().norm();
+        v << x / rxy, y / rxy, 0;
         w = B.matrix().cross(A.matrix());  // w = B x A
-        G << z, -rxy, 0, rxy,  z, 0, 0, 0, 1;
+        G <<   z, -rxy, 0,
+             rxy,    z, 0,
+               0,    0, 1;
         F << u.transpose(), v.transpose(), w.transpose();
         R = F.inverse() * (G * F);
-        velocities.col(i) = (R * noise_xyz.col(i).matrix());
+        velocities.col(i) = (R * noise_xyz.col(i).matrix()) * speed;
     }
 }
 
@@ -134,9 +138,12 @@ void Vicsek3DPBC::add_noise(){
 void Vicsek3DPBC::move(bool rebuild){
     if (rebuild) cell_list.build(positions);
     this->dist_mat = cell_list.get(positions);
+
     align();
+
+    normalise(velocities);
+
     add_noise();
-    normalise(velocities, speed);
 
     for (int d = 0; d < 3; d++){
         positions.row(d) += velocities.row(d);
