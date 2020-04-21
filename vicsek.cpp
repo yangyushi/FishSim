@@ -97,14 +97,10 @@ void Vicsek3DPBC::rotate_noise(Coord3D& noise_xyz){
     Vec3D A, B, u, v, w;
     double x{0}, y{0}, z{0}, r{0}, rxy{0};
     for (int i = 0; i < this->n; i++){
-        x = velocities(0, i);
-        y = velocities(1, i);
-        z = velocities(2, i);
-        r = sqrt(x * x + y * y + z * z);
-        x = x / r;
-        y = y / r;
-        z = z / r;
-        rxy = 1 - z * z;
+        x = velocities(0, i) / this->speed;
+        y = velocities(1, i) / this->speed;
+        z = velocities(2, i) / this->speed;
+        rxy = sqrt(1 - z * z);
         A << 0, 0, 1;
         B << x, y, z;
         u = A;
@@ -137,7 +133,7 @@ void Vicsek3DPBC::add_noise(){
 
 void Vicsek3DPBC::move(bool rebuild){
     if (rebuild) cell_list.build(positions);
-    dist_mat = cell_list.get(positions);
+    this->dist_mat = cell_list.get(positions);
     align();
     add_noise();
     normalise(velocities, speed);
