@@ -49,6 +49,7 @@ py::array_t<double> vicsek_3d_pbc(
         }
     }
 
+    int cursor = 0;
     for (int step = 0; step < run_steps * jump; step++){
         if (step % update_step == 0){
             system.move(true);
@@ -59,14 +60,15 @@ py::array_t<double> vicsek_3d_pbc(
         if (step % jump == 0){
             for (int i = 0; i < n; i++){
                 for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * step) + (i * 6) + d;
+                    offset = (offset_frame * cursor) + (i * 6) + d;
                     ptr_result[offset] = system.positions(d, i);
                 }
                 for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * step) + (i * 6) + d + 3;
+                    offset = (offset_frame * cursor) + (i * 6) + d + 3;
                     ptr_result[offset] = system.velocities(d, i);
                 }
             }
+            cursor++;
         }
     }
     result.resize({run_steps, n, 6});
