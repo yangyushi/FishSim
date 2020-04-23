@@ -48,6 +48,15 @@ void normalise(Coord3D& xyz){
 }
 
 
+void normalise(Coord2D& xy){
+    int i = 0;
+    for (auto L : xy.colwise().norm()){
+        xy.col(i) /= L;
+        i++;
+    }
+}
+
+
 void normalise(Coord3D& xyz, double spd){
     int i = 0;
     for (auto L : xyz.colwise().norm()){
@@ -55,6 +64,16 @@ void normalise(Coord3D& xyz, double spd){
         i++;
     }
     xyz *= spd;
+}
+
+
+void normalise(Coord2D& xy, double spd){
+    int i = 0;
+    for (auto L : xy.colwise().norm()){
+        xy.col(i) /= L;
+        i++;
+    }
+    xy *= spd;
 }
 
 
@@ -209,6 +228,137 @@ void Vicsek3DPBC::load(string filename){
                 ss >> positions(j, i - head_lines);
             }
             for (int j = 0; j < 3; j++){
+                ss >> velocities(j, i - head_lines);
+            }
+        }
+    }
+    f.close();
+}
+
+
+Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0) :
+        noise(eta), speed(v0), box(box), n(n),
+        positions(2, n), velocities(2, n), cell_list(r, box, true) {
+        positions.setRandom(2, n);
+        positions = (positions + 1) / 2 * box;
+        velocities.setRandom(2, n);
+        normalise(velocities, v0);
+    }
+
+
+void Vicsek2DPBC::align(){
+    int neighbour_num = 0;
+    Coord2D new_velocities{2, n};
+    Vec2D v_align;
+
+    for (int i = 0; i < this->n; i++){
+        v_align << 0, 0;
+        neighbour_num = 0;
+
+        for (int j = 0; j < dist_mat.rows(); j++){
+            if (dist_mat(i, j) >= 0){
+                v_align += velocities.col(j);
+                neighbour_num += 1;
+            }
+        }
+        new_velocities.col(i) << v_align / neighbour_num;
+    }
+
+    velocities << new_velocities;
+}
+
+
+void Vicsek2DPBC::add_noise(){
+    Property noise_phi{1, this->n};
+    Property phi{1, this->n};
+
+    Coord2D noise_xy{2, this->n};
+
+    noise_phi.setRandom(); // ~ U(-1, 1)
+    noise_phi *= PI * this->noise; // phi ~ U(-PI, PI)
+
+    phi << velocities.row(1).binaryExpr(
+               velocities.row(0), [] (double a, double b) { return atan2(a,b);}
+           ); // atan2(y, x)
+    phi += noise_phi;
+
+    velocities.row(0) = speed * cos(phi);
+    velocities.row(1) = speed * sin(phi);
+}
+
+
+void Vicsek2DPBC::move(bool rebuild){
+    if (rebuild) cell_list.build(positions);
+    this->dist_mat = cell_list.get(positions);
+
+    align();
+    normalise(velocities);
+    add_noise();
+
+    for (int d = 0; d < 2; d++){
+        positions.row(d) += velocities.row(d);
+    }
+
+    fix_positions();
+}
+
+
+void Vicsek2DPBC::dump(string filename){
+    ofstream f;
+    f.open(filename, ios::out | ios::app);
+    f << this->n << endl;
+    f << "id, x, y, vx, vy" << endl;
+    for (int i = 0; i < this->n; i++ ) {
+        f << i << " "
+          << positions(0, i)  << " " <<  positions(1, i)  << " "
+          << velocities(0, i) << " " <<  velocities(1, i) << " " << endl;
+    }
+    f.close();
+}
+
+
+void Vicsek2DPBC::load(string filename){
+    /*
+     * Load the configuration from the last frame in a xyz file
+     * The xyz file should be produced by this->dump
+     */
+    ifstream f;
+    string line;
+    regex head_pattern{"\\d+"};
+    smatch matched;
+    int head_lines = 2;
+    string num;
+    int N = 0;
+    int total_frame = 0;
+    
+    f.open(filename, ios::in);
+    while (f) {
+        getline(f, line);
+        if (regex_match(line, matched, head_pattern)){
+            N = stoi(line);
+            total_frame += 1;
+            for (int i=0; i<N; i++) getline(f, line);
+        }
+    }
+    f.close();
+    
+    f.open(filename, ios::in);
+    for (int i = 0; i < total_frame - 1; i++){
+        for (int j = 0; j < N + head_lines; j++){
+            getline(f, line);
+        }
+    }
+    
+    for (int i = 0; i < N + head_lines; i++){
+        getline(f, line);
+        
+        if (i > 1) {
+            istringstream ss(line);
+            ss >> num;
+            for (int j = 0; j < 2; j++){
+                ss >> positions(j, i - head_lines);
+            }
+            for (int j = 0; j < 2; j++){
                 ss >> velocities(j, i - head_lines);
             }
         }
