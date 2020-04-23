@@ -165,3 +165,53 @@ void Vicsek3DPBC::dump(string filename){
     }
     f.close();
 }
+
+
+void Vicsek3DPBC::load(string filename){
+    /*
+     * Load the configuration from the last frame in a xyz file
+     * The xyz file should be produced by this->dump
+     */
+    ifstream f;
+    string line;
+    regex head_pattern{"\\d+"};
+    smatch matched;
+    int head_lines = 2;
+    string num;
+    int N = 0;
+    int total_frame = 0;
+    
+    f.open(filename, ios::in);
+    while (f) {
+        getline(f, line);
+        if (regex_match(line, matched, head_pattern)){
+            N = stoi(line);
+            total_frame += 1;
+            for (int i=0; i<N; i++) getline(f, line);
+        }
+    }
+    f.close();
+    
+    f.open(filename, ios::in);
+    for (int i = 0; i < total_frame - 1; i++){
+        for (int j = 0; j < N + head_lines; j++){
+        getline(f, line);
+        }
+    }
+    
+    for (int i = 0; i < N + head_lines; i++){
+        getline(f, line);
+        
+        if (i > 1) {
+            istringstream ss(line);
+            ss >> num;
+            for (int j = 0; j < 3; j++){
+                ss >> positions(j, i - head_lines);
+            }
+            for (int j = 0; j < 3; j++){
+                ss >> velocities(j, i - head_lines);
+            }
+        }
+    }
+    f.close();
+}

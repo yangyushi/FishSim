@@ -1,10 +1,11 @@
 import os
+import sys
+sys.path.append('../lib')
 from tqdm import tqdm
 import pickle
 import itertools
 import numpy as np
 from noise_3d import add_vicsek_noise_3d
-import fish_track as ft
 from scipy import spatial
 import matplotlib.pyplot as plt
 import csimulate

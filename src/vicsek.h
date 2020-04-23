@@ -3,11 +3,12 @@
 
 #include <string>
 #include <iostream>
+#include <cmath>
+#include <regex>
+#include <fstream>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <Eigen/LU>
-#include <cmath>
-#include <fstream>
 #include "neighbour_list.h"
 
 using namespace std;
@@ -39,6 +40,7 @@ class Vicsek3DPBC{
         Vicsek3DPBC(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
         void dump(string filename);
+        void load(string filename);
 };
 
 
