@@ -1,6 +1,7 @@
 #ifndef NEIGHBOUR_LIST
 #define NEIGHBOUR_LIST
 #include <vector>
+#include <array>
 #include <map>
 #include <Eigen/Dense>
 
@@ -9,8 +10,13 @@ using namespace std;
 using Coord3D = Eigen::Array<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
 using CellIndices = Eigen::Array<int, 3, Eigen::Dynamic, Eigen::RowMajor>; // (3, n)
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
-using Index3D = vector<int>;  // size is 3
+
+using Index3D = array<int, 3>;  // size is 3
+using Index2D = array<int, 2>;  // size is 3
+
 using Indices3D = vector< Index3D >;
+using Indices2D = vector< Index2D >;
+
 using Indices = vector<int>;  // size is n
 using Neighbours = vector<Indices>;
 using Head = map<Index3D, int>;
@@ -38,7 +44,7 @@ class CellList3D{
             return cs;
         }
         void refill();
-        Indices3D get_neighbours_indices(vector<int> cell_idx);
+        Indices3D get_neighbours_indices(Index3D cell_idx);
 
     public:
         CellList3D(double r_cut, double box, bool pbc);

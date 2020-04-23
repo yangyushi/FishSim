@@ -14,7 +14,8 @@ void CellList3D::refill(){
     * Filling chead and clist with zeros
     */
     chead.clear();
-    vector<int> sc_range;
+    Indices sc_range;
+
     for (int i=0; i < sc; i++){
         sc_range.push_back(i);
     }
@@ -30,15 +31,17 @@ void CellList3D::refill(){
 }
 
 
-Indices3D CellList3D::get_neighbours_indices(vector<int> cell_idx){
+Indices3D CellList3D::get_neighbours_indices(Index3D cell_idx){
     /*
      * For a cell indexed as (a, b, c), find all its neighbours
      * The cell itself is included as a "neighbour"
      */
-    Indices3D neighbours; // (dimension, neighbour_num)
+    Neighbours neighbours; // (dimension, neighbour_num)
 
     for (int d = 0; d < ndim; d++){
-        neighbours.push_back(Index3D{cell_idx[d]});
+
+        neighbours.push_back( Indices{cell_idx[d]} );
+
         if (cell_idx[d] == 0){
             if (pbc) {
                 neighbours.back().push_back(this->sc - 1);
@@ -72,13 +75,13 @@ void CellList3D::build(Coord3D& positions){
     refill();
 
     Index3D cell_idx;
+
     for (int i=1; i < size + 1; i++){
-        for (int j = 0; j < ndim; j++){
-            cell_idx.push_back(ci(j, i-1));
+        for (int d = 0; d < ndim; d++){
+            cell_idx[d] = ci(d, i-1);
         }
         clist[i] = chead[cell_idx];
         chead[cell_idx] = i;
-        cell_idx.clear();
     }
 }
 
@@ -118,6 +121,7 @@ DistMat CellList3D::get(Coord3D positions){
 
         // Collecting particle indices in neighbour cells
         neighbours = get_neighbours_indices(cell_idx);
+
         for (auto nc : neighbours){ // nc -> neighbour_cell
             if (chead[nc] == 0) continue;
             in_neighbour.push_back(chead[nc]);
@@ -154,8 +158,8 @@ Index3D unravel_index(int index, vector<int> shape){
     /*
      * Same behaviour as ``numpy.unravel_index``
      */
-    Index3D result;
     int dim = shape.size();
+    Index3D result;
     int size;
     int tmp;
     for (int d1 = 0; d1 < dim; d1++){
@@ -164,7 +168,7 @@ Index3D unravel_index(int index, vector<int> shape){
             size *= shape[d2];
         }
         tmp = floor(index / size);
-        result.push_back(tmp);
+        result[d1] = tmp;
         index -= tmp * size;
     }
     return result;
@@ -175,8 +179,10 @@ Indices3D product_3d(Indices& arr){
     /*
      * Calculate Cartesian product of indices in different dimensions
      */
+
     Indices3D result;
     Index3D temp{0, 0, 0};
+
     int size = arr.size();
     for (int i = 0; i < size; i++){
     for (int j = 0; j < size; j++){
@@ -196,7 +202,10 @@ Indices3D product_3d(Indices& arr_1, Indices& arr_2, Indices& arr_3){
      */
     Indices3D result;
     Index3D temp{0, 0, 0};
+
     int size = arr_1.size();
+
+
     for (int i = 0; i < size; i++){
     for (int j = 0; j < size; j++){
     for (int k = 0; k < size; k++){

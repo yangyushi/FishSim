@@ -2,9 +2,11 @@
 __pycache__
 *.so
 *.o
+*.a
 *.ovito
 tags
 *.xyz
 !.gitignore
 *.prof
 *.png
+*.pdf
