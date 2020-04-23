@@ -29,7 +29,6 @@ class CellList3D{
         bool pbc;
         Indices clist;  // cell list
         Head chead;  // cell head
-        Index3D idx;
 
         inline vector<int> chead_shape() {
             vector<int> cs;

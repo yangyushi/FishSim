@@ -20,7 +20,7 @@ void CellList3D::refill(){
     }
 
     for (auto item : product_3d(sc_range)){
-        chead[idx] = 0;
+        chead[item] = 0;
     }
 
     clist.clear();
