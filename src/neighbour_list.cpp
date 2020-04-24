@@ -129,6 +129,9 @@ CellList3D::CellList3D(double r_cut, double box, bool pbc) :
     ndim = 3;
     size = 0;
     sc = floor(box / rc / 2);
+    for (int d = 0; d < ndim; d++){
+        head_shape[d] = sc;
+    }
 }
 
 
@@ -212,23 +215,21 @@ DistMat CellList3D::get(Coord3D positions){
     DistMat dist_mat(size, size);
     dist_mat.setConstant(-1);
 
-    double rc2 = rc * rc;
-    double dist2 = 0;
-    double dist_1d = 0;
-
     CellIndices3D ci(ndim, size);
     ci << floor(positions / box * sc).cast<int>();
 
-    Indices3D neighbours;
-    Indices in_neighbour;
-    Indices in_cell;
-    Index3D cell_idx;
-    int cursor;
-    // itering over all cells
-    for (int x=0; x < pow(sc, ndim); x++){ 
-        in_cell.clear();
-        in_neighbour.clear();
-        cell_idx = unravel_index(x, chead_shape());
+    double rc2 = rc * rc;
+    int max_cell_idx = pow(sc, ndim);
+
+    #pragma omp parallel for
+    for (int x = 0; x < max_cell_idx; x++){ 
+
+        int cursor = 0;
+        double dist_1d = 0;
+        Indices3D neighbours;
+        Indices in_neighbour;
+        Indices in_cell;
+        Index3D cell_idx = unravel_index(x, head_shape);
 
         // ignore empty cells
         if (chead[cell_idx] == 0) continue;
@@ -256,7 +257,7 @@ DistMat CellList3D::get(Coord3D positions){
 
         for (auto i : in_cell){
         for (auto j : in_neighbour){
-            dist2 = 0;
+            double dist2 = 0;
             for (int d = 0; d < ndim; d++){
                 dist_1d = abs(positions(d, i-1) - positions(d, j-1));
                 if (pbc and dist_1d > box / 2){
@@ -281,6 +282,9 @@ CellList2D::CellList2D(double r_cut, double box, bool pbc) :
     ndim = 2;
     size = 0;
     sc = floor(box / rc / 2);
+    for (int d = 0; d < ndim; d++){
+        head_shape[d] = sc;
+    }
 }
 
 
@@ -365,22 +369,27 @@ DistMat CellList2D::get(Coord2D positions){
     dist_mat.setConstant(-1);
 
     double rc2 = rc * rc;
-    double dist2 = 0;
-    double dist_1d = 0;
 
     CellIndices2D ci(ndim, size);
     ci << floor(positions / box * sc).cast<int>();
 
-    Indices2D neighbours;
-    Indices in_neighbour;
-    Indices in_cell;
-    Index2D cell_idx;
-    int cursor;
+
+    int max_cell_idx = pow(sc, ndim);
     // itering over all cells
-    for (int x=0; x < pow(sc, ndim); x++){ 
+
+    #pragma omp parallel for
+    for (int x=0; x < max_cell_idx; x++){ 
+
+        int cursor = 0;
+
+        Indices in_neighbour;
+        Indices in_cell;
+        Index2D cell_idx;
+        Indices2D neighbours;
+
         in_cell.clear();
         in_neighbour.clear();
-        cell_idx = unravel_index(x, chead_shape());
+        cell_idx = unravel_index(x, head_shape);
 
         // ignore empty cells
         if (chead[cell_idx] == 0) continue;
@@ -388,6 +397,7 @@ DistMat CellList2D::get(Coord2D positions){
         // Collecting particle indices in current cell
         in_cell.push_back(chead[cell_idx]);
         cursor = chead[cell_idx];
+
         while (clist[cursor] > 0) {
             cursor = clist[cursor];
             in_cell.push_back(cursor);
@@ -408,7 +418,8 @@ DistMat CellList2D::get(Coord2D positions){
 
         for (auto i : in_cell){
         for (auto j : in_neighbour){
-            dist2 = 0;
+            double dist2 = 0;
+            double dist_1d = 0;
             for (int d = 0; d < ndim; d++){
                 dist_1d = abs(positions(d, i-1) - positions(d, j-1));
                 if (pbc and dist_1d > box / 2){

@@ -48,14 +48,8 @@ class CellList3D{
         bool pbc;
         Indices clist;  // cell list
         Head3D chead;  // cell head
+        Index3D head_shape;
 
-        inline Index3D chead_shape() {
-            Index3D cs;
-            for (int d = 0; d < ndim; d++){
-                cs[d] = sc;
-            }
-            return cs;
-        }
         void refill();
         Indices3D get_neighbours_indices(Index3D cell_idx);
 
@@ -79,14 +73,8 @@ class CellList2D{
         bool pbc;
         Indices clist;  // cell list
         Head2D chead;  // cell head
+        Index2D head_shape;
 
-        inline Index2D chead_shape() {
-            Index2D cs;
-            for (int d = 0; d < ndim; d++){
-                cs[d] = sc;
-            }
-            return cs;
-        }
         void refill();
         Indices2D get_neighbours_indices(Index2D cell_idx);
 
