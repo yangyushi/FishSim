@@ -1,5 +1,19 @@
-CC = g++
-CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include  -fPIC
+#--------------------- Clang and openmp, working with my mac  ----------------
+CC = clang++
+CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC\
+		   -Xpreprocessor -fopenmp -lomp -I/usr/local/opt/libomp/include
+#-----------------------------------------------------------------------------
+
+#---------------------- GCC 9 and openmp, not working with my mac  -----------
+#CC = g++-9
+#CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC -fopenmp
+#-----------------------------------------------------------------------------
+
+#--------------------- Clang , working with my mac  -------------------------
+#CC = clang++
+#CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC
+#-----------------------------------------------------------------------------
+
 PYFLAGS = `python3 -m pybind11 --includes` `python3-config --ldflags` -L`python3-config --prefix`/lib 
 
 
@@ -20,7 +34,7 @@ neighbour_list.o: neighbour_list.cpp
 test: main.cpp vicsek.o neighbour_list.o
 	$(CC) $(CPPFLAGS) main.cpp vicsek.o neighbour_list.o
 	rm -f test.xyz
-	./a.out
+	time ./a.out
 	rm a.out
 
 prof: main.cpp vicsek.o neighbour_list.o
