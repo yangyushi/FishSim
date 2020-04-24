@@ -56,7 +56,7 @@ class CellList3D{
     public:
         CellList3D(double r_cut, double box, bool pbc);
         void build(Coord3D& positions);
-        DistMat get(Coord3D positions);
+        void get(Coord3D& positions, DistMat& dist_mat);
 };
 
 
@@ -81,7 +81,7 @@ class CellList2D{
     public:
         CellList2D(double r_cut, double box, bool pbc);
         void build(Coord2D& positions);
-        DistMat get(Coord2D positions);
+        void get(Coord2D& positions, DistMat& dist_mat);
 };
 
 

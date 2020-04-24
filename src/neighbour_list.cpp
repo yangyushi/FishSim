@@ -211,8 +211,7 @@ void CellList3D::build(Coord3D& positions){
 }
 
 
-DistMat CellList3D::get(Coord3D positions){
-    DistMat dist_mat(size, size);
+void CellList3D::get(Coord3D& positions, DistMat& dist_mat){
     dist_mat.setConstant(-1);
 
     CellIndices3D ci(ndim, size);
@@ -272,8 +271,6 @@ DistMat CellList3D::get(Coord3D positions){
     }
 
     dist_mat = (dist_mat > 0).select(dist_mat.sqrt(), dist_mat);
-
-    return dist_mat;
 }
 
 
@@ -364,8 +361,7 @@ void CellList2D::build(Coord2D& positions){
 }
 
 
-DistMat CellList2D::get(Coord2D positions){
-    DistMat dist_mat(size, size);
+void CellList2D::get(Coord2D& positions, DistMat& dist_mat){
     dist_mat.setConstant(-1);
 
     double rc2 = rc * rc;
@@ -434,7 +430,5 @@ DistMat CellList2D::get(Coord2D positions){
     }
 
     dist_mat = (dist_mat > 0).select(dist_mat.sqrt(), dist_mat);
-
-    return dist_mat;
 }
 

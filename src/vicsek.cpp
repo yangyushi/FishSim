@@ -78,8 +78,8 @@ void normalise(Coord2D& xy, double spd){
 
 
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0) :
-        noise(eta), speed(v0), box(box), n(n),
-        positions(3, n), velocities(3, n), cell_list(r, box, true) {
+        noise(eta), speed(v0), box(box), n(n), dist_mat(n, n),
+        positions(3, n), velocities(3, n), cell_list(r, box, true){
         positions.setRandom(3, n);
         positions = (positions + 1) / 2 * box;
         velocities.setRandom(3, n);
@@ -156,7 +156,7 @@ void Vicsek3DPBC::add_noise(){
 
 void Vicsek3DPBC::move(bool rebuild){
     if (rebuild) cell_list.build(positions);
-    this->dist_mat = cell_list.get(positions);
+    cell_list.get(positions, dist_mat);
 
     align();
 
@@ -237,8 +237,8 @@ void Vicsek3DPBC::load(string filename){
 
 
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0) :
-        noise(eta), speed(v0), box(box), n(n),
-        positions(2, n), velocities(2, n), cell_list(r, box, true) {
+        noise(eta), speed(v0), box(box), n(n), dist_mat(n, n),
+        positions(2, n), velocities(2, n), cell_list(r, box, true){
         positions.setRandom(2, n);
         positions = (positions + 1) / 2 * box;
         velocities.setRandom(2, n);
@@ -289,7 +289,7 @@ void Vicsek2DPBC::add_noise(){
 
 void Vicsek2DPBC::move(bool rebuild){
     if (rebuild) cell_list.build(positions);
-    this->dist_mat = cell_list.get(positions);
+    cell_list.get(positions, dist_mat);
 
     align();
     normalise(velocities);
