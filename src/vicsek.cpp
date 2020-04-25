@@ -1,6 +1,6 @@
 #include "vicsek.h"
 
-const double PI  =3.141592653589793238463;
+const double PI = 3.141592653589793238463;
 
 
 Coord3D xyz_to_sphere(Coord3D& xyz){
@@ -36,6 +36,31 @@ Coord3D sphere_to_xyz(Coord3D& sphere){
     xyz.row(2) << sphere.row(0) * sin(sphere.row(2));
 
     return xyz;
+}
+
+
+Property xy_to_phi(Coord2D& xy){
+    Property phi{1, xy.cols()};
+    for (int i = 0; i < phi.cols(); i++){
+        phi(0, i) = atan2(xy(1, i), xy(0, i));
+    }
+    return phi;
+}
+
+
+Coord2D phi_to_xy(Property& phi){
+    Coord2D xy{2, phi.cols()};
+    xy.row(0) = cos(phi);
+    xy.row(1) = sin(phi);
+    return xy;
+}
+
+
+Coord2D phi_to_xy(Property& phi, double spd){
+    Coord2D xy{2, phi.cols()};
+    xy.row(0) = cos(phi) * spd;
+    xy.row(1) = sin(phi) * spd;
+    return xy;
 }
 
 
@@ -264,22 +289,17 @@ void Vicsek2DPBC::align(){
         new_velocities.col(i) << v_align / neighbour_num;
     }
 
-    velocities << new_velocities;
+    normalise(new_velocities);
+    velocities = new_velocities;
 }
 
 
 void Vicsek2DPBC::add_noise(){
     Property noise_phi{1, this->n};
-    Property phi{1, this->n};
-
-    Coord2D noise_xy{2, this->n};
+    Property phi = xy_to_phi(velocities);
 
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= PI * this->noise; // phi ~ U(-PI, PI)
-
-    phi << velocities.row(1).binaryExpr(
-               velocities.row(0), [] (double a, double b) { return atan2(a,b);}
-           ); // atan2(y, x)
     phi += noise_phi;
 
     velocities.row(0) = speed * cos(phi);
@@ -292,13 +312,12 @@ void Vicsek2DPBC::move(bool rebuild){
     cell_list.get(positions, dist_mat);
 
     align();
-    normalise(velocities);
+
     add_noise();
 
     for (int d = 0; d < 2; d++){
         positions.row(d) += velocities.row(d);
     }
-
     fix_positions();
 }
 
@@ -365,3 +384,53 @@ void Vicsek2DPBC::load(string filename){
     }
     f.close();
 }
+
+
+Vicsek2DPBCVN::Vicsek2DPBCVN(int n, double r, double eta, double box, double v0) :
+        Vicsek2DPBC(n, r, eta, box, v0){}
+
+
+void Vicsek2DPBCVN::noisy_align(){
+    int neighbour_num = 0;
+    Property noise_phi{1, this->n};
+    Coord2D noise_xy{2, this->n};
+
+    noise_phi.setRandom(); // ~ U(-1, 1)
+    noise_phi *= PI; // phi ~ U(-PI, PI)
+
+    noise_xy.row(0) = cos(noise_phi) * speed * noise;
+    noise_xy.row(1) = sin(noise_phi) * speed * noise;
+
+    Coord2D new_velocities{2, n};
+    Vec2D v_align;
+
+    for (int i = 0; i < this->n; i++){
+        v_align << 0, 0;
+        neighbour_num = 0;
+
+        for (int j = 0; j < dist_mat.rows(); j++){
+            if (dist_mat(i, j) >= 0){
+                v_align += velocities.col(j);
+                neighbour_num += 1;
+            }
+        }
+        new_velocities.col(i) = v_align + neighbour_num * noise_xy.col(i);
+    }
+
+    normalise(new_velocities, speed);
+    velocities = new_velocities;
+}
+
+
+void Vicsek2DPBCVN::move(bool rebuild){
+    if (rebuild) cell_list.build(positions);
+    cell_list.get(positions, dist_mat);
+
+    noisy_align();
+
+    for (int d = 0; d < 2; d++){
+        positions.row(d) += velocities.row(d);
+    }
+    fix_positions();
+}
+

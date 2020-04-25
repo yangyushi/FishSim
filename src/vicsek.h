@@ -24,7 +24,7 @@ using Vec2D = Eigen::Array2d;  // (2, )
 
 
 class Vicsek3DPBC{
-    private:
+    protected:
         double noise;
         double speed;
         double box;
@@ -49,7 +49,7 @@ class Vicsek3DPBC{
 
 
 class Vicsek2DPBC{
-    private:
+    protected:
         double noise;
         double speed;
         double box;
@@ -58,7 +58,6 @@ class Vicsek2DPBC{
 
         void align();
         void add_noise();
-        void rotate_noise(Coord2D& noise_xyz);
         inline void fix_positions(){positions -= box * (positions / box).floor();}
 
     public:
@@ -72,6 +71,14 @@ class Vicsek2DPBC{
         void load(string filename);
 };
 
+
+class Vicsek2DPBCVN : public Vicsek2DPBC{
+    private:
+        void noisy_align();
+    public:
+        Vicsek2DPBCVN(int n, double r, double eta, double box, double v0);
+        void move(bool rebuild);
+};
 
 Coord3D xyz_to_sphere(Coord3D& xyz);
 Coord3D sphere_to_xyz(Coord3D& sphere);
