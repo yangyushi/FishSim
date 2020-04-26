@@ -6,7 +6,8 @@ __pycache__
 *.ovito
 **/tags
 *.xyz
-!.gitignore
 *.prof
 *.png
 *.pdf
+!**/.nojekyll
+!.gitignore
