@@ -1,29 +1,28 @@
 #include "vicsek.h"
 
 int main(){
-    Vicsek2DPBCVN system{200, 1.0, 0.62, 10.0, 0.05};
+    Vicsek3DPBC system{1000, 1.0, 0.36, 8.0, 0.05};
 
-    for (int step=0; step < 1000; step++){
-        if (step % 100 == 0){
+    for (int step=0; step < 5000; step++){
+        if (step % 20 == 0){
             system.move(true);
         }
         else {
             system.move(false);
         }
-        system.dump("test.xyz");
+        if (step % 5 == 0) system.dump("test.xyz");
     }
 
     system.load("test.xyz");
 
-    for (int step=0; step < 1000; step++){
-        if (step % 100 == 0){
+    for (int step=0; step < 5000; step++){
+        if (step % 20 == 0){
             system.move(true);
         }
         else {
             system.move(false);
         }
-        system.dump("test.xyz");
+        if (step % 5 == 0) system.dump("test.xyz");
     }
-
     return 0;
 }

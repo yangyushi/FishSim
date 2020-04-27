@@ -73,32 +73,40 @@ void normalise(Coord3D& xyz){
 }
 
 
-void normalise(Coord2D& xy){
+void normalise(Coord3D& xyz, double spd){
     int i = 0;
-    for (auto L : xy.colwise().norm()){
-        xy.col(i) /= L;
+    for (auto L : xyz.colwise().norm()){
+        xyz.col(i) = xyz.col(i) / L * spd;
         i++;
     }
 }
 
 
-void normalise(Coord3D& xyz, double spd){
+void normalise(Coord2D& xy){
     int i = 0;
-    for (auto L : xyz.colwise().norm()){
-        xyz.col(i) /= L;
+    for (auto L : xy.colwise().norm()){
+        if (L < 1e-14){
+            xy.col(i).setRandom();
+            xy.col(i) = xy.col(i) + 1 * 0.5;
+        } else {
+            xy.col(i) /= L;
+        }
         i++;
     }
-    xyz *= spd;
 }
 
 
 void normalise(Coord2D& xy, double spd){
     int i = 0;
     for (auto L : xy.colwise().norm()){
-        xy.col(i) /= L;
+        if (L < 1e-14){
+            xy.col(i).setRandom();
+            xy.col(i) = xy.col(i) + 1 * 0.5;
+        } else {
+            xy.col(i) = xy.col(i) / L * spd;
+        }
         i++;
     }
-    xy *= spd;
 }
 
 
