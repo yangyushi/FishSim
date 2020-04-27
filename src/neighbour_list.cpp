@@ -211,7 +211,7 @@ void CellList3D::build(Coord3D& positions){
 }
 
 
-void CellList3D::get(Coord3D& positions, DistMat& dist_mat){
+void CellList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
     dist_mat.setConstant(-1);
 
     CellIndices3D ci(ndim, size);
@@ -272,6 +272,68 @@ void CellList3D::get(Coord3D& positions, DistMat& dist_mat){
 
     dist_mat = (dist_mat > 0).select(dist_mat.sqrt(), dist_mat);
 }
+
+
+void CellList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
+    conn_mat.setZero();
+
+    CellIndices3D ci(ndim, size);
+    ci << floor(positions / box * sc).cast<int>();
+
+    double rc2 = rc * rc;
+    int max_cell_idx = pow(sc, ndim);
+
+    #pragma omp parallel for
+    for (int x = 0; x < max_cell_idx; x++){ 
+
+        int cursor = 0;
+        double dist_1d = 0;
+        Indices3D neighbours;
+        Indices in_neighbour;
+        Indices in_cell;
+        Index3D cell_idx = unravel_index(x, head_shape);
+
+        // ignore empty cells
+        if (chead[cell_idx] == 0) continue;
+
+        // Collecting particle indices in current cell
+        in_cell.push_back(chead[cell_idx]);
+        cursor = chead[cell_idx];
+        while (clist[cursor] > 0) {
+            cursor = clist[cursor];
+            in_cell.push_back(cursor);
+        }
+
+        // Collecting particle indices in neighbour cells
+        neighbours = get_neighbours_indices(cell_idx);
+
+        for (auto nc : neighbours){ // nc -> neighbour_cell
+            if (chead[nc] == 0) continue;
+            in_neighbour.push_back(chead[nc]);
+            cursor = chead[nc];
+            while (clist[cursor] > 0){
+                cursor = clist[cursor];
+                in_neighbour.push_back(cursor);
+            }
+        }
+
+        for (auto i : in_cell){
+        for (auto j : in_neighbour){
+            double dist2 = 0;
+            for (int d = 0; d < ndim; d++){
+                dist_1d = abs(positions(d, i-1) - positions(d, j-1));
+                if (pbc and dist_1d > box / 2){
+                    dist_1d = box - dist_1d;
+                }
+                dist2 += dist_1d * dist_1d;
+            }
+            if (dist2 < rc2){
+                conn_mat(i-1, j-1) = 1;
+            }
+        }}
+    }
+}
+
 
 
 CellList2D::CellList2D(double r_cut, double box, bool pbc) :
@@ -361,7 +423,7 @@ void CellList2D::build(Coord2D& positions){
 }
 
 
-void CellList2D::get(Coord2D& positions, DistMat& dist_mat){
+void CellList2D::get_dmat(Coord2D& positions, DistMat& dist_mat){
     dist_mat.setConstant(-1);
 
     double rc2 = rc * rc;
@@ -432,3 +494,72 @@ void CellList2D::get(Coord2D& positions, DistMat& dist_mat){
     dist_mat = (dist_mat > 0).select(dist_mat.sqrt(), dist_mat);
 }
 
+
+void CellList2D::get_cmat(Coord2D& positions, ConnMat& conn_mat){
+    conn_mat.setZero();
+
+    double rc2 = rc * rc;
+
+    CellIndices2D ci(ndim, size);
+    ci << floor(positions / box * sc).cast<int>();
+
+
+    int max_cell_idx = pow(sc, ndim);
+    // itering over all cells
+
+    #pragma omp parallel for
+    for (int x=0; x < max_cell_idx; x++){ 
+
+        int cursor = 0;
+
+        Indices in_neighbour;
+        Indices in_cell;
+        Index2D cell_idx;
+        Indices2D neighbours;
+
+        in_cell.clear();
+        in_neighbour.clear();
+        cell_idx = unravel_index(x, head_shape);
+
+        // ignore empty cells
+        if (chead[cell_idx] == 0) continue;
+
+        // Collecting particle indices in current cell
+        in_cell.push_back(chead[cell_idx]);
+        cursor = chead[cell_idx];
+
+        while (clist[cursor] > 0) {
+            cursor = clist[cursor];
+            in_cell.push_back(cursor);
+        }
+
+        // Collecting particle indices in neighbour cells
+        neighbours = get_neighbours_indices(cell_idx);
+
+        for (auto nc : neighbours){ // nc -> neighbour_cell
+            if (chead[nc] == 0) continue;
+            in_neighbour.push_back(chead[nc]);
+            cursor = chead[nc];
+            while (clist[cursor] > 0){
+                cursor = clist[cursor];
+                in_neighbour.push_back(cursor);
+            }
+        }
+
+        for (auto i : in_cell){
+        for (auto j : in_neighbour){
+            double dist2 = 0;
+            double dist_1d = 0;
+            for (int d = 0; d < ndim; d++){
+                dist_1d = abs(positions(d, i-1) - positions(d, j-1));
+                if (pbc and dist_1d > box / 2){
+                    dist_1d = box - dist_1d;
+                }
+                dist2 += dist_1d * dist_1d;
+            }
+            if (dist2 < rc2){
+                conn_mat(i-1, j-1) = 1;
+            }
+        }}
+    }
+}

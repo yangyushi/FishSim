@@ -8,6 +8,7 @@
 using namespace std;
 
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
+using ConnMat = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
 using Indices = vector<int>;  // size is n
 using Neighbours = vector<Indices>;
 
@@ -56,7 +57,8 @@ class CellList3D{
     public:
         CellList3D(double r_cut, double box, bool pbc);
         void build(Coord3D& positions);
-        void get(Coord3D& positions, DistMat& dist_mat);
+        void get_dmat(Coord3D& positions, DistMat& dist_mat);
+        void get_cmat(Coord3D& positions, ConnMat& conn_mat);
 };
 
 
@@ -81,7 +83,8 @@ class CellList2D{
     public:
         CellList2D(double r_cut, double box, bool pbc);
         void build(Coord2D& positions);
-        void get(Coord2D& positions, DistMat& dist_mat);
+        void get_dmat(Coord2D& positions, DistMat& dist_mat);
+        void get_cmat(Coord2D& positions, ConnMat& conn_mat);
 };
 
 

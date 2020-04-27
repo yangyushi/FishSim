@@ -85,12 +85,7 @@ void normalise(Coord3D& xyz, double spd){
 void normalise(Coord2D& xy){
     int i = 0;
     for (auto L : xy.colwise().norm()){
-        if (L < 1e-14){
-            xy.col(i).setRandom();
-            xy.col(i) = xy.col(i) + 1 * 0.5;
-        } else {
-            xy.col(i) /= L;
-        }
+        xy.col(i) /= L;
         i++;
     }
 }
@@ -99,19 +94,14 @@ void normalise(Coord2D& xy){
 void normalise(Coord2D& xy, double spd){
     int i = 0;
     for (auto L : xy.colwise().norm()){
-        if (L < 1e-14){
-            xy.col(i).setRandom();
-            xy.col(i) = xy.col(i) + 1 * 0.5;
-        } else {
-            xy.col(i) = xy.col(i) / L * spd;
-        }
+        xy.col(i) = xy.col(i) / L * spd;
         i++;
     }
 }
 
 
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0) :
-        noise(eta), speed(v0), box(box), n(n), dist_mat(n, n),
+        noise(eta), speed(v0), box(box), n(n), conn_mat(n, n),
         positions(3, n), velocities(3, n), cell_list(r, box, true){
         positions.setRandom(3, n);
         positions = (positions + 1) / 2 * box;
@@ -121,23 +111,19 @@ Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0) :
 
 
 void Vicsek3DPBC::align(){
-    int neighbour_num = 0;
-    Coord3D new_velocities{3, n};
+    Coord3D new_velocities{3, this->n};
+    PropertyInt neighbour_nums{1, this->n};
+    neighbour_nums = conn_mat.colwise().sum();
     Vec3D v_align;
 
     for (int i = 0; i < this->n; i++){
         v_align << 0, 0, 0;
-        neighbour_num = 0;
 
-        for (int j = 0; j < dist_mat.rows(); j++){
-            if (dist_mat(i, j) >= 0){
-                v_align += velocities.col(j);
-                neighbour_num += 1;
-            }
+        for (int j = 0; j < conn_mat.rows(); j++){
+            v_align += velocities.col(j) * conn_mat(i, j);
         }
-        new_velocities.col(i) << v_align / neighbour_num;
+        new_velocities.col(i) << v_align / neighbour_nums(0, i);
     }
-
     velocities << new_velocities;
 }
 
@@ -189,12 +175,10 @@ void Vicsek3DPBC::add_noise(){
 
 void Vicsek3DPBC::move(bool rebuild){
     if (rebuild) cell_list.build(positions);
-    cell_list.get(positions, dist_mat);
 
+    cell_list.get_cmat(positions, conn_mat);
     align();
-
     normalise(velocities);
-
     add_noise();
 
     for (int d = 0; d < 3; d++){
@@ -270,7 +254,7 @@ void Vicsek3DPBC::load(string filename){
 
 
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0) :
-        noise(eta), speed(v0), box(box), n(n), dist_mat(n, n),
+        noise(eta), speed(v0), box(box), n(n), conn_mat(n, n),
         positions(2, n), velocities(2, n), cell_list(r, box, true){
         positions.setRandom(2, n);
         positions = (positions + 1) / 2 * box;
@@ -280,21 +264,16 @@ Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0) :
 
 
 void Vicsek2DPBC::align(){
-    int neighbour_num = 0;
     Coord2D new_velocities{2, n};
     Vec2D v_align;
 
     for (int i = 0; i < this->n; i++){
         v_align << 0, 0;
-        neighbour_num = 0;
 
-        for (int j = 0; j < dist_mat.rows(); j++){
-            if (dist_mat(i, j) >= 0){
-                v_align += velocities.col(j);
-                neighbour_num += 1;
-            }
+        for (int j = 0; j < conn_mat.rows(); j++){
+            v_align += velocities.col(j) * conn_mat(i, j);
         }
-        new_velocities.col(i) << v_align / neighbour_num;
+        new_velocities.col(i) << v_align;
     }
 
     normalise(new_velocities);
@@ -317,7 +296,7 @@ void Vicsek2DPBC::add_noise(){
 
 void Vicsek2DPBC::move(bool rebuild){
     if (rebuild) cell_list.build(positions);
-    cell_list.get(positions, dist_mat);
+    cell_list.get_cmat(positions, conn_mat);
 
     align();
 
@@ -399,9 +378,10 @@ Vicsek2DPBCVN::Vicsek2DPBCVN(int n, double r, double eta, double box, double v0)
 
 
 void Vicsek2DPBCVN::noisy_align(){
-    int neighbour_num = 0;
     Property noise_phi{1, this->n};
     Coord2D noise_xy{2, this->n};
+    PropertyInt neighbour_nums{1, this->n};
+    neighbour_nums = conn_mat.colwise().sum();
 
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= PI; // phi ~ U(-PI, PI)
@@ -414,15 +394,14 @@ void Vicsek2DPBCVN::noisy_align(){
 
     for (int i = 0; i < this->n; i++){
         v_align << 0, 0;
-        neighbour_num = 0;
 
-        for (int j = 0; j < dist_mat.rows(); j++){
-            if (dist_mat(i, j) >= 0){
-                v_align += velocities.col(j);
-                neighbour_num += 1;
-            }
+        for (int j = 0; j < conn_mat.rows(); j++){
+            v_align += velocities.col(j) * conn_mat(i, j);
         }
-        new_velocities.col(i) = v_align + neighbour_num * noise_xy.col(i);
+        // in ginelliEPJ2016 eq. 6: v_align -> \sum n_ij^t s_j^t
+        //                          noise_xy.col(i) -> eta * xi_i^t
+        //                          neighbour_num -> m_i
+        new_velocities.col(i) = v_align + noise_xy.col(i) * neighbour_nums(0, i);
     }
 
     normalise(new_velocities, speed);
@@ -432,13 +411,11 @@ void Vicsek2DPBCVN::noisy_align(){
 
 void Vicsek2DPBCVN::move(bool rebuild){
     if (rebuild) cell_list.build(positions);
-    cell_list.get(positions, dist_mat);
 
+    cell_list.get_cmat(positions, conn_mat);
     noisy_align();
 
-    for (int d = 0; d < 2; d++){
-        positions.row(d) += velocities.row(d);
-    }
+    for (int d = 0; d < 2; d++){ positions.row(d) += velocities.row(d); }
     fix_positions();
 }
 

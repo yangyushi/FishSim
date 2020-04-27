@@ -1,12 +1,12 @@
 #--------------------- Clang and openmp, working with my mac  ----------------
-CC = clang++
-CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC\
+#CC = clang++
+#CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC\
 		   -Xpreprocessor -fopenmp -lomp -I/usr/local/opt/libomp/include
 #-----------------------------------------------------------------------------
 
 #---------------------- GCC 9 and openmp, not working with my mac  -----------
-#CC = g++-9
-#CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC -fopenmp
+CC = g++-9
+CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC -fopenmp
 #-----------------------------------------------------------------------------
 
 #--------------------- Clang , working with my mac  -------------------------

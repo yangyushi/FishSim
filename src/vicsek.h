@@ -14,6 +14,7 @@
 using namespace std;
 
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
+using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 
 using Coord3D = Eigen::Array<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
 using Vec3D = Eigen::Array3d;  // (3, )
@@ -29,7 +30,7 @@ class Vicsek3DPBC{
         double speed;
         double box;
         int n;
-        DistMat dist_mat;
+        ConnMat conn_mat;
 
         void align();
         void add_noise();
@@ -54,7 +55,7 @@ class Vicsek2DPBC{
         double speed;
         double box;
         int n;
-        DistMat dist_mat;
+        ConnMat conn_mat;
 
         void align();
         void add_noise();
