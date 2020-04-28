@@ -1,9 +1,9 @@
 #include "vicsek.h"
 
 int main(){
-    Vicsek3DPBC system{1000, 1.0, 0.36, 8.0, 0.05};
+    Vicsek2DPBC system{200, 1.0, 0.40, 8.0, 0.1};
 
-    for (int step=0; step < 5000; step++){
+    for (int step=0; step < 10000; step++){
         if (step % 20 == 0){
             system.move(true);
         }
@@ -15,7 +15,7 @@ int main(){
 
     system.load("test.xyz");
 
-    for (int step=0; step < 5000; step++){
+    for (int step=0; step < 10000; step++){
         if (step % 20 == 0){
             system.move(true);
         }

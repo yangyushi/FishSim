@@ -31,11 +31,18 @@ vicsek.o: vicsek.cpp
 neighbour_list.o: neighbour_list.cpp
 	$(CC) $(CPPFLAGS) -c neighbour_list.cpp -o neighbour_list.o
 
-test: main.cpp vicsek.o neighbour_list.o
+sim: main.cpp vicsek.o neighbour_list.o
 	$(CC) $(CPPFLAGS) main.cpp vicsek.o neighbour_list.o
 	rm -f test.xyz
 	time ./a.out
 	rm a.out
+
+
+test: test.cpp vicsek.o neighbour_list.o
+	$(CC) $(CPPFLAGS) test.cpp vicsek.o neighbour_list.o
+	time ./a.out
+	rm a.out
+
 
 prof: main.cpp vicsek.o neighbour_list.o
 	$(CC) $(CPPFLAGS) -O1 -pg main.cpp neighbour_list.cpp vicsek.cpp
