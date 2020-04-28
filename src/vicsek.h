@@ -49,6 +49,15 @@ class Vicsek3DPBC{
 };
 
 
+class Vicsek3DPBCVN : public Vicsek3DPBC{
+    private:
+        void noisy_align();
+    public:
+        Vicsek3DPBCVN(int n, double r, double eta, double box, double v0);
+        void move(bool rebuild);
+};
+
+
 class Vicsek2DPBC{
     protected:
         double noise;
