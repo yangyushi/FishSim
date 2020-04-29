@@ -254,8 +254,8 @@ void CellList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
             }
         }
 
-        for (auto i : in_cell){
-        for (auto j : in_neighbour){
+        for (int i : in_cell){
+        for (int j : in_neighbour){
             double dist2 = 0;
             for (int d = 0; d < ndim; d++){
                 dist_1d = abs(positions(d, i-1) - positions(d, j-1));
@@ -317,8 +317,8 @@ void CellList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
             }
         }
 
-        for (auto i : in_cell){
-        for (auto j : in_neighbour){
+        for (int i : in_cell){
+        for (int j : in_neighbour){
             double dist2 = 0;
             for (int d = 0; d < ndim; d++){
                 dist_1d = abs(positions(d, i-1) - positions(d, j-1));
@@ -407,7 +407,7 @@ Indices2D CellList2D::get_neighbours_indices(Index2D cell_idx){
 void CellList2D::build(Coord2D& positions){
     size = positions.cols();
     CellIndices2D ci(ndim, size);  // discretise positions into cell indices
-    ci << floor(positions / box * sc).cast<int>();
+    ci << floor(positions / box * sc);
 
     refill();
 
@@ -429,7 +429,7 @@ void CellList2D::get_dmat(Coord2D& positions, DistMat& dist_mat){
     double rc2 = rc * rc;
 
     CellIndices2D ci(ndim, size);
-    ci << floor(positions / box * sc).cast<int>();
+    ci << floor(positions / box * sc);
 
 
     int max_cell_idx = pow(sc, ndim);
@@ -474,8 +474,8 @@ void CellList2D::get_dmat(Coord2D& positions, DistMat& dist_mat){
             }
         }
 
-        for (auto i : in_cell){
-        for (auto j : in_neighbour){
+        for (int i : in_cell){
+        for (int j : in_neighbour){
             double dist2 = 0;
             double dist_1d = 0;
             for (int d = 0; d < ndim; d++){
@@ -501,7 +501,7 @@ void CellList2D::get_cmat(Coord2D& positions, ConnMat& conn_mat){
     double rc2 = rc * rc;
 
     CellIndices2D ci(ndim, size);
-    ci << floor(positions / box * sc).cast<int>();
+    ci << floor(positions / box * sc);
 
 
     int max_cell_idx = pow(sc, ndim);
@@ -546,8 +546,8 @@ void CellList2D::get_cmat(Coord2D& positions, ConnMat& conn_mat){
             }
         }
 
-        for (auto i : in_cell){
-        for (auto j : in_neighbour){
+        for (int i : in_cell){
+        for (int j : in_neighbour){
             double dist2 = 0;
             double dist_1d = 0;
             for (int d = 0; d < ndim; d++){

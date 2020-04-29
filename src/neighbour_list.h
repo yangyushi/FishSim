@@ -9,18 +9,18 @@ using namespace std;
 
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
 using ConnMat = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
-using Indices = vector<int>;  // size is n
-using Neighbours = vector<Indices>;
+using Indices = vector< double >;  // size is n
+using Neighbours = vector< Indices >;
 
 using Coord3D = Eigen::Array<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
 using CellIndices3D = Eigen::Array<int, 3, Eigen::Dynamic, Eigen::RowMajor>; // (3, n)
-using Index3D = array<int, 3>;  // size is 3
+using Index3D = array<double, 3>;  // size is 3
 using Indices3D = vector< Index3D >;
 using Head3D = map<Index3D, int>;
 
 using Coord2D = Eigen::Array<double, 2, Eigen::Dynamic, Eigen::RowMajor>;  // (2, n)
-using CellIndices2D = Eigen::Array<int, 2, Eigen::Dynamic, Eigen::RowMajor>; // (2, n)
-using Index2D = array<int, 2>;  // size is 3
+using CellIndices2D = Eigen::Array<double, 2, Eigen::Dynamic, Eigen::RowMajor>; // (2, n)
+using Index2D = array<double, 2>;  // size is 3
 using Indices2D = vector< Index2D >;
 using Head2D = map<Index2D, int>;
 
