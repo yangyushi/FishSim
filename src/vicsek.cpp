@@ -312,9 +312,9 @@ void Vicsek3DPBCVN::move(bool rebuild){
 
 
 
-Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0) :
-        noise(eta), speed(v0), box(box), n(n), conn_mat(n, n),
-        positions(2, n), velocities(2, n), cell_list(r, box, true){
+Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
+    : noise(eta), speed(v0), box(box), n(n), conn_mat(n, n),
+      positions(2, n), velocities(2, n), cell_list(r, box, true){
         positions.setRandom(2, n);
         positions = (positions + 1) / 2 * box;
         velocities.setRandom(2, n);
