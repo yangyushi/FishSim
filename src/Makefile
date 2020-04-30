@@ -45,12 +45,13 @@ test: test.cpp vicsek.o neighbour_list.o
 
 
 prof: main.cpp vicsek.o neighbour_list.o
-	$(CC) $(CPPFLAGS) -pg main.cpp neighbour_list.cpp vicsek.cpp
+	$(CC) $(CPPFLAGS) -g main.cpp neighbour_list.cpp vicsek.cpp
 	./a.out
 	gprof ./a.out | gprof2dot | dot -Tpng -o output.png
 	rm -f a.out
-	rm -f test.xyz
-	rm -f gmon.out
+
+prof_mac: main.cpp vicsek.o neighbour_list.o
+	$(CC) $(CPPFLAGS) main.cpp neighbour_list.o vicsek.o
 
 clean:
 	rm -f *.o

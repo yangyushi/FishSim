@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import csimulate
 
 
-N = 200
+N = 500
 density = 5.0
 box = (N / density) ** (1/3)
 spd = 0.1
@@ -17,12 +17,13 @@ noises = np.arange(0.0, 1.0, 0.05)
 
 orders = []
 
-t0 = time.time()
+t_cpp = 0
 for noise in noises:
+    t0 = time.time()
     result = csimulate.vicsek_3d_pbc(N, box, noise, spd, r, 1000, 1000)  # (T, n, 6)
+    t_cpp += time.time() - t0
     order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(-1)).mean()
     orders.append(order / spd)
-t_cpp = time.time() - t0
 
 # plotting results from a Python code
 result_py = np.load('result_py.npy')

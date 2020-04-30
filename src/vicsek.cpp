@@ -114,17 +114,16 @@ Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0) :
 
 void Vicsek3DPBC::align(){
     Coord3D new_velocities{3, this->n};
-    Vec3D v_align;
+    new_velocities.setZero();
 
     for (int i = 0; i < this->n; i++){
-        v_align << 0, 0, 0;
 
         for (int j = 0; j < conn_mat.rows(); j++){
             if (conn_mat(i, j) > 0){
-                v_align += velocities.col(j);
+                new_velocities.col(i) += velocities.col(j);
             }
         }
-        new_velocities.col(i) << v_align;
+
     }
     velocities << new_velocities;
 }

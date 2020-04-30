@@ -1,7 +1,7 @@
 #include "vicsek.h"
 
 int main(){
-    Vicsek2DPBC system{2000, 1.0, 0.05, 30.0, 0.05};
+    Vicsek3DPBC system{1000, 1.0, 0.4, 10.0, 0.1};
 
     for (int step=0; step < 1000; step++){
         if (step % 20 == 0){
@@ -12,7 +12,7 @@ int main(){
         }
     }
 
-    system.load("test.xyz");
+    //system.load("test.xyz");
 
     for (int step=0; step < 1000; step++){
         if (step % 20 == 0){
@@ -21,7 +21,7 @@ int main(){
         else {
             system.move(false);
         }
-        system.dump("test.xyz");
+        //system.dump("test.xyz");
     }
     return 0;
 }
