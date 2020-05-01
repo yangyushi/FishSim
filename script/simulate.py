@@ -27,7 +27,7 @@ for noise in noises:
 
 # plotting results from a Python code
 result_py = np.load('result_py.npy')
-plt.scatter(*result_py, color='tomato', s=64, facecolor='none', label=f'Python: ~467s')
+plt.scatter(*result_py, color='tomato', s=64, facecolor='none', label=f'Python: ~5000s')
 
 # plotting C++ results
 plt.scatter(noises, orders, color='teal', marker='+', label=f'C++: {t_cpp:.2f}s', s=72)
