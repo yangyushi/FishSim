@@ -79,6 +79,7 @@ class Vicsek2DPBC{
         void move(bool rebuild);
         void dump(string filename);
         void load(string filename);
+        Vec2D get_shift(Vec2D p1, Vec2D p2);
 };
 
 
@@ -89,6 +90,27 @@ class Vicsek2DPBCVN : public Vicsek2DPBC{
         Vicsek2DPBCVN(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
 };
+
+
+class Vicsek2DPBCVNCO : public Vicsek2DPBC{
+    private:
+        void update_velocity();
+        double alpha_;
+        double beta_;
+        double ra_;
+        double re_;
+        double rc_;
+        double c_;
+    public:
+        Vicsek2DPBCVNCO(
+                int n, double r, double eta, double box, double v0,  // vicsek model
+                double a, double b, double ra, double re, double rc  // for cohesion
+                );
+        // default cohesionparameter
+        Vicsek2DPBCVNCO(int n, double r, double eta, double box, double v0);  
+        void move(bool rebuild);
+};
+
 
 Coord3D xyz_to_sphere(Coord3D& xyz);
 Coord3D sphere_to_xyz(Coord3D& sphere);
