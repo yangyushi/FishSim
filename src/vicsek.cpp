@@ -102,34 +102,33 @@ void normalise(Coord2D& xy, double spd){
 }
 
 
-Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0) :
-        noise(eta), speed(v0), box(box), n(n), conn_mat(n, n),
-        positions(3, n), velocities(3, n), cell_list(r, box, true){
-        positions.setRandom(3, n);
-        positions = (positions + 1) / 2 * box;
-        velocities.setRandom(3, n);
-        normalise(velocities, v0);
+Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
+    : noise_(eta), speed_(v0), n_(n), conn_mat_(n, n),
+    verlet_list_(r, r*3), positions_(3, n), velocities_(3, n) {
+        positions_.setRandom(3, n);
+        velocities_.setRandom(3, n);
+        normalise(velocities_, speed_);
     }
 
 
-void Vicsek3DPBC::align(){
-    Coord3D new_velocities{3, this->n};
+void Vicsek3D::align(){
+    Coord3D new_velocities{3, n_};
     new_velocities.setZero();
 
-    for (int i = 0; i < this->n; i++){
+    for (int i = 0; i < n_; i++){
 
-        for (int j = 0; j < conn_mat.rows(); j++){
-            if (conn_mat(i, j) > 0){
-                new_velocities.col(i) += velocities.col(j);
+        for (int j = 0; j < conn_mat_.rows(); j++){
+            if (conn_mat_(i, j) > 0){
+                new_velocities.col(i) += velocities_.col(j);
             }
         }
 
     }
-    velocities << new_velocities;
+    velocities_ << new_velocities;
 }
 
 
-void Vicsek3DPBC::rotate_noise(Coord3D& noise_xyz){
+void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
     /*
     * Rotate nosie pointing at (0, 0, 1) to direction xyz 
     * and then add noise_xyz to velocities
@@ -138,15 +137,15 @@ void Vicsek3DPBC::rotate_noise(Coord3D& noise_xyz){
     RotMat F, G, R;
     Vec3D A, B, u, v, w;
     double x{0}, y{0}, z{0}, rxy{0};
-    for (int i = 0; i < this->n; i++){
-        x = velocities(0, i);
-        y = velocities(1, i);
-        z = velocities(2, i);
+    for (int i = 0; i < n_; i++){
+        x = velocities_(0, i);
+        y = velocities_(1, i);
+        z = velocities_(2, i);
         rxy = sqrt(x * x + y * y);
         A << 0, 0, 1;
         B << x, y, z;
         if ((A - B).matrix().norm() < 1e-10){
-            velocities.col(i) = noise_xyz.col(i);
+            velocities_.col(i) = noise_xyz.col(i);
         } else {
             u = A;
             v << x / rxy, y / rxy, 0;
@@ -156,21 +155,21 @@ void Vicsek3DPBC::rotate_noise(Coord3D& noise_xyz){
                    0,    0, 1;
             F << u.transpose(), v.transpose(), w.transpose();
             R = F.inverse() * (G * F);
-            velocities.col(i) = (R * noise_xyz.col(i).matrix()) * speed;
+            velocities_.col(i) = (R * noise_xyz.col(i).matrix()) * speed_;
         }
     }
 }
 
 
-void Vicsek3DPBC::add_noise(){
-    Property noise_rxy{1, this->n}, noise_phi{1, this->n};
-    Coord3D noise_xyz{3, this->n};
+void Vicsek3D::add_noise(){
+    Property noise_rxy{1, n_}, noise_phi{1, n_};
+    Coord3D noise_xyz{3, n_};
 
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= PI; // phi ~ U(-PI, PI)
 
     noise_xyz.row(2).setRandom(); // ~ U(-1, 1)
-    noise_xyz.row(2) = noise_xyz.row(2) * noise - noise + 1; // z ~ U(1 - 2 * noise, 1)
+    noise_xyz.row(2) = noise_xyz.row(2) * noise_ - noise_ + 1; // z ~ U(1 - 2 * noise, 1)
     noise_rxy = sqrt(1 - noise_xyz.row(2).pow(2));
     noise_xyz.row(0) = noise_rxy * cos(noise_phi);
     noise_xyz.row(1) = noise_rxy * sin(noise_phi);
@@ -178,37 +177,41 @@ void Vicsek3DPBC::add_noise(){
 }
 
 
-void Vicsek3DPBC::move(bool rebuild){
-    if (rebuild) cell_list.build(positions);
+void Vicsek3D::move(bool rebuild){
+    if (rebuild) verlet_list_.build(positions_);
 
-    cell_list.get_cmat(positions, conn_mat);
+    verlet_list_.get_cmat(positions_, conn_mat_);
+
     align();
-    normalise(velocities);
+
+    normalise(velocities_);
     add_noise();
 
     for (int d = 0; d < 3; d++){
-        positions.row(d) += velocities.row(d);
+        positions_.row(d) += velocities_.row(d);
     }
-
-    fix_positions();
 }
 
 
-void Vicsek3DPBC::dump(string filename){
+void Vicsek3D::dump(string filename){
     ofstream f;
     f.open(filename, ios::out | ios::app);
-    f << this->n << endl;
+    f << n_ << endl;
     f << "id, x, y, z, vx, vy, vz" << endl;
-    for (int i = 0; i < this->n; i++ ) {
+    for (int i = 0; i < n_; i++ ) {
         f << i << " "
-          << positions(0, i)  << " " <<  positions(1, i)  << " " << positions(2, i)  << " "
-          << velocities(0, i) << " " <<  velocities(1, i) << " " << velocities(2, i) << endl;
+            << positions_(0, i)  << " "
+            << positions_(1, i)  << " "
+            << positions_(2, i)  << " "
+            << velocities_(0, i) << " "
+            << velocities_(1, i) << " "
+            << velocities_(2, i) << endl;
     }
     f.close();
 }
 
 
-void Vicsek3DPBC::load(string filename){
+void Vicsek3D::load(string filename){
     /*
      * Load the configuration from the last frame in a xyz file
      * The xyz file should be produced by this->dump
@@ -247,15 +250,43 @@ void Vicsek3DPBC::load(string filename){
             istringstream ss(line);
             ss >> num;
             for (int j = 0; j < 3; j++){
-                ss >> positions(j, i - head_lines);
+                ss >> positions_(j, i - head_lines);
             }
             for (int j = 0; j < 3; j++){
-                ss >> velocities(j, i - head_lines);
+                ss >> velocities_(j, i - head_lines);
             }
         }
     }
     f.close();
 }
+
+
+Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
+    : Vicsek3D{n, r, eta, v0}, box_{box}, cell_list_{r, box, true} {
+        positions_.setRandom(3, n);
+        positions_ = (positions_ + 1) / 2 * box_;
+        velocities_.setRandom(3, n);
+        normalise(velocities_, speed_);
+    }
+
+
+void Vicsek3DPBC::move(bool rebuild){
+    if (rebuild) cell_list_.build(positions_);
+
+    cell_list_.get_cmat(positions_, conn_mat_);
+
+    align();
+
+    normalise(velocities_);
+    add_noise();
+
+    for (int d = 0; d < 3; d++){
+        positions_.row(d) += velocities_.row(d);
+    }
+
+    fix_positions();
+}
+
 
 
 Vicsek3DPBCVN::Vicsek3DPBCVN(int n, double r, double eta, double box, double v0)
@@ -266,49 +297,48 @@ void Vicsek3DPBCVN::noisy_align(){
     /*
      * See ginellEPJ2016 for equations
      */
-    Property noise_phi{1, this->n};
-    Property noise_theta{1, this->n};
-    PropertyInt neighbour_nums{1, this->n};
+    Property noise_phi{1, n_};
+    Property noise_theta{1, n_};
+    PropertyInt neighbour_nums{1, n_};
 
-    Coord3D noise_xyz{3, this->n};
-    Coord3D new_velocities{3, this->n};
+    Coord3D noise_xyz{3, n_};
+    Coord3D new_velocities{3, n_};
     Vec3D v_align;
 
-    neighbour_nums = conn_mat.colwise().sum(); // -> m_i
+    neighbour_nums = conn_mat_.colwise().sum(); // -> m_i
 
     noise_phi.setRandom();   noise_phi   = (noise_phi + 1) * PI; // phi ~ U(0, 2PI)
     noise_theta.setRandom(); noise_theta = asin(noise_theta);    // theta ~ U(0, PI)
 
-    noise_xyz.row(0) = cos(noise_theta) * cos(noise_phi) * speed * noise; // -> eta * xi_i^t
-    noise_xyz.row(1) = cos(noise_theta) * sin(noise_phi) * speed * noise;
-    noise_xyz.row(2) = sin(noise_theta) * speed * noise;
+    noise_xyz.row(0) = cos(noise_theta) * cos(noise_phi) * speed_ * noise_; // -> eta * xi_i^t
+    noise_xyz.row(1) = cos(noise_theta) * sin(noise_phi) * speed_ * noise_;
+    noise_xyz.row(2) = sin(noise_theta) * speed_ * noise_;
 
-    for (int i = 0; i < this->n; i++){
+    for (int i = 0; i < n_; i++){
         v_align << 0, 0, 0;
 
-        for (int j = 0; j < conn_mat.cols(); j++){  // \sum n_ij^t s_j^t
-            if (conn_mat(i, j) > 0){
-                v_align += velocities.col(j);
+        for (int j = 0; j < conn_mat_.cols(); j++){  // \sum n_ij^t s_j^t
+            if (conn_mat_(i, j) > 0){
+                v_align += velocities_.col(j);
             }
         }
         new_velocities.col(i) = v_align + noise_xyz.col(i) * neighbour_nums(0, i);
     }
 
-    normalise(new_velocities, speed);
-    velocities = new_velocities;
+    normalise(new_velocities, speed_);
+    velocities_ = new_velocities;
 }
 
 
 void Vicsek3DPBCVN::move(bool rebuild){
-    if (rebuild) cell_list.build(positions);
+    if (rebuild) cell_list_.build(positions_);
 
-    cell_list.get_cmat(positions, conn_mat);
+    cell_list_.get_cmat(positions_, conn_mat_);
     noisy_align();
 
-    positions += velocities;
+    positions_ += velocities_;
     fix_positions();
 }
-
 
 
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)

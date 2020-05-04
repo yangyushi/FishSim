@@ -24,29 +24,41 @@ using Coord2D = Eigen::Array<double, 2, Eigen::Dynamic, Eigen::RowMajor>;  // (2
 using Vec2D = Eigen::Array2d;  // (2, )
 
 
-class Vicsek3DPBC{
+class Vicsek3D{
     protected:
-        double noise;
-        double speed;
-        double box;
-        int n;
-        ConnMat conn_mat;
-
+        double noise_;
+        double speed_;
+        int n_;
+        ConnMat conn_mat_;
         void align();
         void add_noise();
         void rotate_noise(Coord3D& noise_xyz);
-        inline void fix_positions(){positions -= box * (positions / box).floor();}
+        VerletList3D verlet_list_;
 
     public:
-        Coord3D positions;
-        Coord3D velocities;
-        CellList3D cell_list;
+        Coord3D positions_;
+        Coord3D velocities_;
 
-        Vicsek3DPBC(int n, double r, double eta, double box, double v0);
+        Vicsek3D(int n, double r, double eta, double v0);
         void move(bool rebuild);
         void dump(string filename);
         void load(string filename);
 };
+
+
+class Vicsek3DPBC : public Vicsek3D{
+    protected:
+        double box_;
+        CellList3D cell_list_;
+        inline void fix_positions(){
+            positions_ -= box_ * (positions_ / box_).floor();
+        }
+
+    public:
+        Vicsek3DPBC(int n, double r, double eta, double box, double v0);
+        void move(bool rebuild);
+};
+
 
 
 class Vicsek3DPBCVN : public Vicsek3DPBC{
@@ -110,6 +122,7 @@ class Vicsek2DPBCVNCO : public Vicsek2DPBC{
         Vicsek2DPBCVNCO(int n, double r, double eta, double box, double v0);  
         void move(bool rebuild);
 };
+
 
 
 Coord3D xyz_to_sphere(Coord3D& xyz);
