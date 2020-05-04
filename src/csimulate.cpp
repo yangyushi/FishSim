@@ -108,11 +108,11 @@ py::array_t<double> vicsek_3d_pbc(
             for (int i = 0; i < n; i++){
                 for (int d = 0; d < 3; d++){
                     offset = (offset_frame * cursor) + (i * 6) + d;
-                    ptr_result[offset] = system.positions(d, i);
+                    ptr_result[offset] = system.positions_(d, i);
                 }
                 for (int d = 0; d < 3; d++){
                     offset = (offset_frame * cursor) + (i * 6) + d + 3;
-                    ptr_result[offset] = system.velocities(d, i);
+                    ptr_result[offset] = system.velocities_(d, i);
                 }
             }
             cursor++;
