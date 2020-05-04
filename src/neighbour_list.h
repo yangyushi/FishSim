@@ -36,6 +36,28 @@ Indices2D product_2d(Indices& arr);
 Indices2D product_2d(Indices& arr_1, Indices& arr_2);
 
 
+class VerletList3D{
+    /*
+     * Using the Verlet list to accelerate distance calculation with a cutoff for 3D simulation
+     * This is suitable for accelerating the simulation without a box
+     */
+    private:
+        double rc_;
+        double rc2_;
+        double rl_;
+        double rl2_;
+        vector<int> nlist_;
+        vector<int> point_;
+        int size_;
+        int dim_ = 3;
+    public:
+        VerletList3D(double r_cut, double r_skin);
+        void build(Coord3D& positoins);
+        void get_dmat(Coord3D& positoins, DistMat& dist_mat);
+        void get_cmat(Coord3D& positoins, ConnMat& conn_mat);
+};
+
+
 class CellList3D{
     /*
      * Using cell list to accelerate distance calculation with a cutoff for 3D simulation

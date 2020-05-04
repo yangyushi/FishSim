@@ -124,8 +124,69 @@ Indices2D product_2d(Indices& arr_1, Indices& arr_2){
 }
 
 
-CellList3D::CellList3D(double r_cut, double box, bool pbc) :
-    rc(r_cut), box(box), pbc(pbc) {
+VerletList3D::VerletList3D(double r_cut, double r_skin)
+    : rc_{r_cut}, rl_{r_skin} {
+        rl2_ = rl_ * rl_;
+        rc2_ = rc_ * rc_;
+    }
+
+
+void VerletList3D::build(Coord3D& positions){
+    double d2{0};
+    size_ = positions.cols();
+    point_.clear();
+    nlist_.clear();
+
+    point_.push_back(0);
+    for (int i = 0; i < size_; i++){
+        for (int j = 0; j < size_; j++){
+            d2 = (positions.col(i) - positions.col(j)).pow(2).sum();
+            if (d2 < rl2_){
+                nlist_.push_back(j);
+            }
+        }
+        point_.push_back(nlist_.size());
+    }
+}
+
+
+void VerletList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
+    #pragma omp parallel for
+    for (int i = 0; i < point_.size(); i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i+1]; j++){
+            idx_j = nlist_[j];
+            dist2 = (positions.col(i) - positions.col(j)).pow(2).sum();
+            if (dist2 < rc2_){
+                dist_mat(i, idx_j) = sqrt(dist2);
+            }
+        }
+    }
+}
+
+
+void VerletList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
+    conn_mat.setZero();
+    #pragma omp parallel for
+    for (int i = 0; i < point_.size() - 1; i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i + 1]; j++){
+            idx_j = nlist_[j];
+            dist2 = (positions.col(i) - positions.col(idx_j)).pow(2).sum();
+            if (dist2 < rc2_){
+                conn_mat(i, idx_j) = 1;
+            }
+        }
+    }
+}
+
+
+CellList3D::CellList3D(double r_cut, double box, bool pbc)
+    : rc(r_cut), box(box), pbc(pbc) {
     ndim = 3;
     size = 0;
     sc = floor(box / rc / 2);
