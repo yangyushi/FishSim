@@ -55,6 +55,7 @@ class VerletList3D{
         void build(Coord3D& positoins);
         void get_dmat(Coord3D& positoins, DistMat& dist_mat);
         void get_cmat(Coord3D& positoins, ConnMat& conn_mat);
+        void get_cmat_slow(Coord3D& positoins, ConnMat& conn_mat);
 };
 
 

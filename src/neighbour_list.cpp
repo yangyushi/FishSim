@@ -151,6 +151,7 @@ void VerletList3D::build(Coord3D& positions){
 
 
 void VerletList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
+    dist_mat.setConstant(-1);
     #pragma omp parallel for
     for (int i = 0; i < point_.size(); i++){
         int p0 = point_[i];
@@ -179,6 +180,21 @@ void VerletList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
             dist2 = (positions.col(i) - positions.col(idx_j)).pow(2).sum();
             if (dist2 < rc2_){
                 conn_mat(i, idx_j) = 1;
+            }
+        }
+    }
+}
+
+
+void VerletList3D::get_cmat_slow(Coord3D& positions, ConnMat& conn_mat){
+    conn_mat.setZero();
+    int n = positions.cols();
+    #pragma omp parallel for
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
+            double dist2 = (positions.col(i) - positions.col(j)).pow(2).sum();
+            if (dist2 < rc2_){
+                conn_mat(i, j) = 1;
             }
         }
     }
