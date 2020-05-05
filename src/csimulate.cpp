@@ -43,7 +43,8 @@ const char* docstring_attanasi2014pcb =\
     "                    typically this is the simulation steps to reach a steady state\n"\
     "   run_steps (:obj:`int`): the simulation steps that write to the result\n"\
     "   jump (:obj:`int`) = 1: every ``jump`` step is writting into the result\n"\
-    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n\n"\
+    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n"\
+    "   output_file (:obj:`str`) = "": output running frames into an xyz file\n\n"\
     "Return:\n"\
     "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
     " in each frame, shape (run_steps, n, 6)\n"\
@@ -148,11 +149,13 @@ py::array_t<double> vicsek_3d_pbc(
 
 py::array_t<double> attanasi2014pcb(
         int n, double eta, double v0, double b, double r,
-        int pre_steps, int run_steps, int jump=1, string load_file=""
+        int pre_steps, int run_steps, int jump=1,
+        string load_file="", string output_file=""
         ){
     int update_step = floor(r / v0); // the frequency to update the cell list
     const int offset_frame = 6 * n;  // size of each frame
     int offset = 0;
+    bool output = output_file.size() > 0;
 
     Attanasi2014PCB system{n, r, eta, v0, b};
 
@@ -192,6 +195,9 @@ py::array_t<double> attanasi2014pcb(
                 }
             }
             cursor++;
+            if (output){
+                system.dump(output_file);
+            }
         }
     }
     result.resize({run_steps, n, 6});
@@ -312,14 +318,14 @@ PYBIND11_MODULE(csimulate, m){
     m.def(
             "vicsek_3d_pbc", &vicsek_3d_pbc, docstring_vicsek_3d_pbc,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
-            py::arg("pre_steps"), py::arg("run_steps"),
-            py::arg("jump")=1, py::arg("load_file")=""
+            py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
+            py::arg("load_file")=""
            );
     m.def(
             "attanasi2014pcb", &attanasi2014pcb, docstring_attanasi2014pcb,
             py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("b"), py::arg("r"),
-            py::arg("pre_steps"), py::arg("run_steps"),
-            py::arg("jump")=1, py::arg("load_file")=""
+            py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
+            py::arg("load_file")="", py::arg("output_file")=""
            );
 
     m.def(
