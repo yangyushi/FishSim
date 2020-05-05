@@ -116,15 +116,13 @@ void Vicsek3D::align(){
     new_velocities.setZero();
 
     for (int i = 0; i < n_; i++){
-
-        for (int j = 0; j < conn_mat_.rows(); j++){
+        for (int j = 0; j < n_; j++){
             if (conn_mat_(i, j) > 0){
                 new_velocities.col(i) += velocities_.col(j);
             }
         }
-
     }
-    velocities_ << new_velocities;
+    velocities_ = new_velocities;
 }
 
 
@@ -146,6 +144,8 @@ void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
         B << x, y, z;
         if ((A - B).matrix().norm() < 1e-10){
             velocities_.col(i) = noise_xyz.col(i);
+        } else if ((A + B).matrix().norm() < 1e-10){  // B close to (0, 0, -1)
+            velocities_.col(i) << noise_xyz(0, i), noise_xyz(1, i), -noise_xyz(2, i);
         } else {
             u = A;
             v << x / rxy, y / rxy, 0;
@@ -161,6 +161,40 @@ void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
 }
 
 
+void Vicsek3D::rotate_noise_fast(Coord3D& noise_xyz){
+    /*
+    * Rotate nosie pointing at (0, 0, 1) to direction xyz 
+    * and then add noise_xyz to velocities
+    * here velocities have unit norm
+    */
+    RotMat R1, R2, R;
+    Vec3D A, B, v;
+    double c;
+    for (int i = 0; i < n_; i++){
+        A << 0, 0, 1;
+        B << velocities_.col(i);
+        if ((A - B).matrix().norm() < 1e-10){ // B close to (0, 0, 1)
+            velocities_.col(i) = noise_xyz.col(i);  // R -> I
+        } else if ((A + B).matrix().norm() < 1e-10){  // B close to (0, 0, -1)
+            velocities_.col(i) << noise_xyz(0, i),  // R -> rotate to (0, 0, -1)
+                                  noise_xyz(1, i),
+                                - noise_xyz(2, i);
+        } else {
+            v = A.matrix().cross(B.matrix());  // w = A cross B
+            c = (A * B).sum();  // A dot B
+            R1 << 0, -v[2], v[1], // the skew-symmetric matrix
+                  v[2], 0, -v[0],
+                 -v[1], v[0], 0;
+            R << 1, 0, 0,
+                 0, 1, 0,
+                 0, 0, 1; 
+            R = R + R1 + (R1 * R1) / (1 + c);
+            velocities_.col(i) = (R * noise_xyz.col(i).matrix()) * speed_;
+        }
+    }
+}
+
+
 void Vicsek3D::add_noise(){
     Property noise_rxy{1, n_}, noise_phi{1, n_};
     Coord3D noise_xyz{3, n_};
@@ -170,10 +204,12 @@ void Vicsek3D::add_noise(){
 
     noise_xyz.row(2).setRandom(); // ~ U(-1, 1)
     noise_xyz.row(2) = noise_xyz.row(2) * noise_ - noise_ + 1; // z ~ U(1 - 2 * noise, 1)
+
     noise_rxy = sqrt(1 - noise_xyz.row(2).pow(2));
     noise_xyz.row(0) = noise_rxy * cos(noise_phi);
     noise_xyz.row(1) = noise_rxy * sin(noise_phi);
-    rotate_noise(noise_xyz);
+
+    rotate_noise_fast(noise_xyz);
 }
 
 
@@ -185,11 +221,10 @@ void Vicsek3D::move(bool rebuild){
     align();
 
     normalise(velocities_);
+
     add_noise();
 
-    for (int d = 0; d < 3; d++){
-        positions_.row(d) += velocities_.row(d);
-    }
+    positions_ += velocities_;
 }
 
 
@@ -305,15 +340,14 @@ void Attanasi2014PCB::move(bool rebuild){
     verlet_list_.get_cmat(positions_, conn_mat_);
 
     align();
+
     apply_harmonic_force();
 
     normalise(velocities_);
+
     add_noise();
 
-    for (int d = 0; d < 3; d++){
-        positions_.row(d) += velocities_.row(d);
-    }
-
+    positions_ += velocities_;
 }
 
 
@@ -362,9 +396,11 @@ void Vicsek3DPBCVN::move(bool rebuild){
     if (rebuild) cell_list_.build(positions_);
 
     cell_list_.get_cmat(positions_, conn_mat_);
+
     noisy_align();
 
     positions_ += velocities_;
+
     fix_positions();
 }
 

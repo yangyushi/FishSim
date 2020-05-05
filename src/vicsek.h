@@ -17,7 +17,7 @@ using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (
 using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 
 using Coord3D = Eigen::Array<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
-using Vec3D = Eigen::Array3d;  // (3, )
+using Vec3D = Eigen::Array3d;  // (3, 1)
 using RotMat = Eigen::Matrix3d;
 
 using Coord2D = Eigen::Array<double, 2, Eigen::Dynamic, Eigen::RowMajor>;  // (2, n)
@@ -33,6 +33,7 @@ class Vicsek3D{
         void align();
         void add_noise();
         void rotate_noise(Coord3D& noise_xyz);
+        void rotate_noise_fast(Coord3D& noise_xyz);
         VerletList3D verlet_list_;
 
     public:
