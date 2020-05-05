@@ -60,6 +60,15 @@ class Vicsek3DPBC : public Vicsek3D{
 };
 
 
+class Attanasi2014PCB : public Vicsek3D{
+    protected:
+        double beta_;
+        void apply_harmonic_force();
+    public:
+        Attanasi2014PCB(int n, double r, double eta, double v0, double beta);
+        void move(bool rebuild);
+};
+
 
 class Vicsek3DPBCVN : public Vicsek3DPBC{
     private:

@@ -288,6 +288,34 @@ void Vicsek3DPBC::move(bool rebuild){
 }
 
 
+Attanasi2014PCB::Attanasi2014PCB(int n, double r, double eta, double v0, double beta)
+    : Vicsek3D{n, r, eta, v0}, beta_{beta} {}
+
+
+void Attanasi2014PCB::apply_harmonic_force(){
+    for (int i = 0; i < n_; i++){
+        velocities_.col(i) -= beta_ * positions_.col(i);
+    }
+}
+
+
+void Attanasi2014PCB::move(bool rebuild){
+    if (rebuild) verlet_list_.build(positions_);
+
+    verlet_list_.get_cmat(positions_, conn_mat_);
+
+    align();
+    apply_harmonic_force();
+
+    normalise(velocities_);
+    add_noise();
+
+    for (int d = 0; d < 3; d++){
+        positions_.row(d) += velocities_.row(d);
+    }
+
+}
+
 
 Vicsek3DPBCVN::Vicsek3DPBCVN(int n, double r, double eta, double box, double v0)
     : Vicsek3DPBC(n, r, eta, box, v0) {}

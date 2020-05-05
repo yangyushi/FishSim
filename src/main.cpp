@@ -1,8 +1,8 @@
 #include "vicsek.h"
 
 int main(){
-    Vicsek3D system{
-        200, 1.0, 0.1, 0.02,
+    Attanasi2014PCB system{
+        200, 1.0, 0.6, 0.02, 0.001,
     };
 
     cout << "system created" << endl;
