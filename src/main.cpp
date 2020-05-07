@@ -1,8 +1,10 @@
 #include "vicsek.h"
 
 int main(){
-    Attanasi2014PCB system{
-        200, 1.0, 0.6, 0.02, 0.001,
+    int jump = 1;
+
+    Vicsek3DPBCInertia system{
+        250, 1.0, 0.4, 5, 0.05, 0.8,
     };
 
     cout << "system created" << endl;
@@ -14,19 +16,19 @@ int main(){
         else {
             system.move(false);
         }
-        if (step % 20 == 0) system.dump("test.xyz");
+        if (step % jump == 0) system.dump("test.xyz");
     }
 
     cout << "movement works" << endl;
 
-    for (int step=0; step < 10000; step++){
+    for (int step=0; step < 1000; step++){
         if (step % 20 == 0){
             system.move(true);
         }
         else {
             system.move(false);
         }
-        if (step % 20 == 0) system.dump("test.xyz");
+        if (step % jump == 0) system.dump("test.xyz");
     }
     return 0;
 }

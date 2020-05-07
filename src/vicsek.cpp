@@ -114,7 +114,6 @@ Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
 void Vicsek3D::align(){
     Coord3D new_velocities{3, n_};
     new_velocities.setZero();
-
     for (int i = 0; i < n_; i++){
         for (int j = 0; j < n_; j++){
             if (conn_mat_(i, j) > 0){
@@ -306,19 +305,34 @@ Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
 
 
 void Vicsek3DPBC::move(bool rebuild){
-    if (rebuild) cell_list_.build(positions_);
-
+    if (rebuild) {
+        cell_list_.build(positions_);
+    }
     cell_list_.get_cmat(positions_, conn_mat_);
-
     align();
-
     normalise(velocities_);
     add_noise();
+    positions_ += velocities_;
+    fix_positions();
+}
 
-    for (int d = 0; d < 3; d++){
-        positions_.row(d) += velocities_.row(d);
+
+Vicsek3DPBCInertia::Vicsek3DPBCInertia(int n, double r, double eta, double box, double v0, double alpha)
+    : Vicsek3DPBC{n, r, eta, box, v0}, alpha_{alpha}, old_velocities_{3, n} {}
+
+
+void Vicsek3DPBCInertia::move(bool rebuild){
+    if (rebuild){
+        cell_list_.build(positions_);
     }
-
+    cell_list_.get_cmat(positions_, conn_mat_);
+    old_velocities_ << velocities_;
+    align();
+    normalise(velocities_);
+    add_noise();
+    velocities_ = (old_velocities_ * alpha_ + velocities_ * (1 - alpha_));
+    normalise(velocities_, speed_);
+    positions_ += velocities_;
     fix_positions();
 }
 

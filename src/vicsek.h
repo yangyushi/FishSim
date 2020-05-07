@@ -80,6 +80,16 @@ class Vicsek3DPBCVN : public Vicsek3DPBC{
 };
 
 
+class Vicsek3DPBCInertia : public Vicsek3DPBC{
+    private:
+        double alpha_;
+        Coord3D old_velocities_;
+    public:
+        Vicsek3DPBCInertia(int n, double r, double eta, double box, double v0, double alpha);
+        void move(bool rebuild);
+};
+
+
 class Vicsek2DPBC{
     protected:
         double noise;
