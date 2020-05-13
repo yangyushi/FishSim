@@ -3,25 +3,24 @@
 int main(){
     int jump = 1;
 
-    Vicsek3DPBCInertia system{
-        250, 1.0, 0.4, 5, 0.05, 0.8,
+    Attanasi2014PCB system{
+        100, 1.0, 0.05, 0.02, 0.03,
     };
 
     cout << "system created" << endl;
 
-    for (int step=0; step < 1000; step++){
+    for (int step=0; step < 10000; step++){
         if (step % 20 == 0){
             system.move(true);
         }
         else {
             system.move(false);
         }
-        if (step % jump == 0) system.dump("test.xyz");
     }
 
     cout << "movement works" << endl;
 
-    for (int step=0; step < 1000; step++){
+    for (int step=0; step < 100; step++){
         if (step % 20 == 0){
             system.move(true);
         }

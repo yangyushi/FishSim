@@ -106,7 +106,14 @@ Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
     : noise_(eta), speed_(v0), n_(n), conn_mat_(n, n),
     verlet_list_(r, r*3), positions_(3, n), velocities_(3, n) {
         positions_.setRandom(3, n);
-        velocities_.setRandom(3, n);
+        Vec3D vz{n}, vphi{n}, vrxy{n};
+        vz.setRandom(); // vz ~ U(-1, 1)
+        vrxy = sqrt(1 - vz * vz);
+        vphi.setRandom();
+        vphi *= PI;  // vphi ~ U(-pi, pi)
+        velocities_.row(0) << vrxy * cos(vphi);
+        velocities_.row(1) << vrxy * sin(vphi);
+        velocities_.row(2) << vz;
         normalise(velocities_, speed_);
     }
 
