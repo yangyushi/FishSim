@@ -1,5 +1,7 @@
 #include "vicsek.h"
 
+default_random_engine generator;
+
 const double PI = 3.141592653589793238463;
 
 
@@ -202,14 +204,21 @@ void Vicsek3D::rotate_noise_fast(Coord3D& noise_xyz){
 
 
 void Vicsek3D::add_noise(){
+    uniform_real_distribution<> dist_phi(-PI, PI);
+    uniform_real_distribution<> dist_z(1 - 2 * noise_, 1);
+    auto rand_phi = [&] (double) {return dist_phi(generator);};
+    auto rand_z = [&] (double) {return dist_z(generator);};
     Property noise_rxy{1, n_}, noise_phi{1, n_};
     Coord3D noise_xyz{3, n_};
 
-    noise_phi.setRandom(); // ~ U(-1, 1)
-    noise_phi *= PI; // phi ~ U(-PI, PI)
+    //noise_phi.setRandom(); // ~ U(-1, 1)
+    //noise_phi *= PI; // phi ~ U(-PI, PI)
 
-    noise_xyz.row(2).setRandom(); // ~ U(-1, 1)
-    noise_xyz.row(2) = noise_xyz.row(2) * noise_ - noise_ + 1; // z ~ U(1 - 2 * noise, 1)
+    noise_phi.row(0) = Eigen::ArrayXd::NullaryExpr(n_, rand_phi); // phi ~ U(-PI, PI)
+    noise_xyz.row(2) = Eigen::ArrayXd::NullaryExpr(n_, rand_z); //  z ~ U(1 - 2 * noise, 1)
+
+    //noise_xyz.row(2).setRandom(); // ~ U(-1, 1)
+    //noise_xyz.row(2) = noise_xyz.row(2) * noise_ - noise_ + 1; // z ~ U(1 - 2 * noise, 1)
 
     noise_rxy = sqrt(1 - noise_xyz.row(2).pow(2));
     noise_xyz.row(0) = noise_rxy * cos(noise_phi);
