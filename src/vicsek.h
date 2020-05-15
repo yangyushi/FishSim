@@ -35,6 +35,7 @@ class Vicsek3D{
         void add_noise();
         void rotate_noise(Coord3D& noise_xyz);
         void rotate_noise_fast(Coord3D& noise_xyz);
+        void rotate_noise_xyz(Coord3D& noise_xyz);
         VerletList3D verlet_list_;
 
     public:
@@ -64,8 +65,8 @@ class Vicsek3DPBC : public Vicsek3D{
 
 class Attanasi2014PCB : public Vicsek3D{
     protected:
+        void harmonic_align();
         double beta_;
-        void apply_harmonic_force();
     public:
         Attanasi2014PCB(int n, double r, double eta, double v0, double beta);
         void move(bool rebuild);

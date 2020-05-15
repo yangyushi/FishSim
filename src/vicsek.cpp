@@ -169,6 +169,41 @@ void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
 }
 
 
+void Vicsek3D::rotate_noise_xyz(Coord3D& noise_xyz){
+    /*
+    * Rotate nosie pointing at (0, 0, 1) to direction xyz 
+    * and then add noise_xyz to velocities
+    * here velocities have unit norm
+    *   R1 -- rotate (0, 0, 1) to (0, 0, 1)
+    *   R2 -- rotate (0, 0, 1) to (0, 0, 1) in uvw coordinate
+    *   R3 -- elevate (0, 0, 1) in uvw coordinate
+    *   uvw -- basis for uvw coordiante
+    */
+    RotMat R, R1, R2, R3, uvw;
+    Vec3D v;
+    R1 <<  cos(PI/2),   0, sin(PI/2),
+                   0,   1,         0,
+          -sin(PI/2),   0, cos(PI/2);
+    double phi, theta;
+    for (int i = 0; i < n_; i++){
+        v = velocities_.col(i);
+        phi = atan2(v[1], v[0]);
+        theta = asin(v[2] / v.matrix().norm());
+        uvw << cos(phi), -sin(phi), 0,
+               sin(phi),  cos(phi), 0,
+                      0,         0, 1;
+        R2 << cos(phi), -sin(phi), 0,
+              sin(phi), cos(phi), 0,
+                      0,        0, 1;
+        R3 << cos(-theta), 0, sin(-theta),
+                        0, 1,           0,
+             -sin(-theta), 0, cos(-theta);
+        R = uvw * R3 * R2 * uvw.inverse() * R1;
+        velocities_.col(i) = R * noise_xyz.col(i).matrix() * speed_;
+    }
+}
+
+
 void Vicsek3D::rotate_noise_fast(Coord3D& noise_xyz){
     /*
     * Rotate nosie pointing at (0, 0, 1) to direction xyz 
@@ -224,7 +259,7 @@ void Vicsek3D::add_noise(){
     noise_xyz.row(0) = noise_rxy * cos(noise_phi);
     noise_xyz.row(1) = noise_rxy * sin(noise_phi);
 
-    rotate_noise_fast(noise_xyz);
+    rotate_noise_xyz(noise_xyz);
 }
 
 
@@ -313,6 +348,11 @@ void Vicsek3D::load(string filename){
 
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
     : Vicsek3D{n, r, eta, v0}, box_{box}, cell_list_{r, box, true} {
+        double r_box = pow(box * box * box / n, 1.0/3.0);
+        if (r_box > r){
+            int sc = floor(box / r_box / 2);
+            cell_list_.update_sc(sc);
+        }
         positions_.setRandom(3, n);
         positions_ = (positions_ + 1) / 2 * box_;
         velocities_.setRandom(3, n);
@@ -357,21 +397,27 @@ Attanasi2014PCB::Attanasi2014PCB(int n, double r, double eta, double v0, double 
     : Vicsek3D{n, r, eta, v0}, beta_{beta} {}
 
 
-void Attanasi2014PCB::apply_harmonic_force(){
+void Attanasi2014PCB::harmonic_align(){
+    Coord3D new_velocities{3, n_};
+    new_velocities.setZero();
     for (int i = 0; i < n_; i++){
-        velocities_.col(i) -= beta_ * positions_.col(i);
+        for (int j = 0; j < n_; j++){
+            if (conn_mat_(i, j) > 0){
+                new_velocities.col(i) += velocities_.col(j);
+            }
+        }
+        new_velocities.col(i) -= beta_ * positions_.col(i);
     }
+    velocities_ = new_velocities;
 }
 
 
 void Attanasi2014PCB::move(bool rebuild){
     if (rebuild) verlet_list_.build(positions_);
 
-    verlet_list_.get_cmat(positions_, conn_mat_);
+    verlet_list_.get_cmat_slow(positions_, conn_mat_);
 
-    align();
-
-    apply_harmonic_force();
+    harmonic_align();
 
     normalise(velocities_);
 
@@ -438,6 +484,11 @@ void Vicsek3DPBCVN::move(bool rebuild){
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
     : noise(eta), speed(v0), box(box), n(n), conn_mat(n, n),
       positions(2, n), velocities(2, n), cell_list(r, box, true){
+        double r_box = pow(box * box/ n, 0.5);
+        if (r_box > r){
+            int sc = floor(box / r_box / 2);
+            cell_list.update_sc(sc);
+        }
         positions.setRandom(2, n);
         positions = (positions + 1) / 2 * box;
         velocities.setRandom(2, n);
