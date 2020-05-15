@@ -48,8 +48,8 @@ class VerletList3D{
         double rl2_;
         vector<int> nlist_;
         vector<int> point_;
+        int point_size_ = 0;
         int size_;
-        int dim_ = 3;
     public:
         VerletList3D(double r_cut, double r_skin);
         void build(Coord3D& positoins);
@@ -66,19 +66,19 @@ class CellList3D{
     private:
         double rc;
         double box;
-        int sc;
         int size; // number of particles
         int ndim = 3;
+        int sc;
         bool pbc;
         Indices clist;  // cell list
         Head3D chead;  // cell head
         Index3D head_shape;
-
         void refill();
         Indices3D get_neighbours_indices(Index3D cell_idx);
 
     public:
         CellList3D(double r_cut, double box, bool pbc);
+        void update_sc(int new_sc);
         void build(Coord3D& positions);
         void get_dmat(Coord3D& positions, DistMat& dist_mat);
         void get_cmat(Coord3D& positions, ConnMat& conn_mat);
@@ -105,6 +105,7 @@ class CellList2D{
 
     public:
         CellList2D(double r_cut, double box, bool pbc);
+        void update_sc(int new_sc);
         void build(Coord2D& positions);
         void get_dmat(Coord2D& positions, DistMat& dist_mat);
         void get_cmat(Coord2D& positions, ConnMat& conn_mat);

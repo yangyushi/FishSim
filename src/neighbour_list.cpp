@@ -147,13 +147,14 @@ void VerletList3D::build(Coord3D& positions){
         }
         point_.push_back(nlist_.size());
     }
+    point_size_ = point_.size();
 }
 
 
 void VerletList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
     dist_mat.setConstant(-1);
     #pragma omp parallel for
-    for (int i = 0; i < point_.size(); i++){
+    for (int i = 0; i < point_size_ - 1; i++){
         int p0 = point_[i];
         int idx_j = 0;
         double dist2 = 0;
@@ -171,7 +172,7 @@ void VerletList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
 void VerletList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
     conn_mat.setZero();
     #pragma omp parallel for
-    for (int i = 0; i < point_.size() - 1; i++){
+    for (int i = 0; i < point_size_ - 1; i++){
         int p0 = point_[i];
         int idx_j = 0;
         double dist2 = 0;
@@ -206,6 +207,14 @@ CellList3D::CellList3D(double r_cut, double box, bool pbc)
     ndim = 3;
     size = 0;
     sc = floor(box / rc / 2);
+    for (int d = 0; d < ndim; d++){
+        head_shape[d] = sc;
+    }
+}
+
+
+void CellList3D::update_sc(int new_sc){
+    this->sc = new_sc;
     for (int d = 0; d < ndim; d++){
         head_shape[d] = sc;
     }
@@ -496,6 +505,14 @@ void CellList2D::build(Coord2D& positions){
         }
         clist[i] = chead[cell_idx];
         chead[cell_idx] = i;
+    }
+}
+
+
+void CellList2D::update_sc(int new_sc){
+    this->sc = new_sc;
+    for (int d = 0; d < ndim; d++){
+        head_shape[d] = sc;
     }
 }
 
