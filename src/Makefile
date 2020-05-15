@@ -1,7 +1,8 @@
 #--------------------- Clang and openmp, working with my mac  ----------------
 CC = clang++
 CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC\
-		   -Xpreprocessor -fopenmp -lomp -I/usr/local/opt/libomp/include
+		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include
+LINKFLAGS = -lomp
 #-----------------------------------------------------------------------------
 
 #---------------------- GCC 9 and openmp, not working with my mac  -----------
@@ -18,7 +19,7 @@ PYFLAGS = `python3 -m pybind11 --includes` `python3-config --ldflags` -L`python3
 
 
 csimulate`python3-config --extension-suffix`: csimulate.cpp libcsimulate.a
-	$(CC) $(CPPFLAGS) $(PYFLAGS) -shared -o csimulate`python3-config --extension-suffix` csimulate.cpp libcsimulate.a
+	$(CC) $(CPPFLAGS) $(PYFLAGS) $(LINKFLAGS) -shared -o csimulate`python3-config --extension-suffix` csimulate.cpp libcsimulate.a
 	mv *.so ../lib
 	mv *.a ../lib
 
@@ -32,26 +33,31 @@ neighbour_list.o: neighbour_list.cpp
 	$(CC) $(CPPFLAGS) -c neighbour_list.cpp -o neighbour_list.o
 
 sim: main.cpp vicsek.o neighbour_list.o
-	$(CC) $(CPPFLAGS) main.cpp vicsek.o neighbour_list.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) main.cpp vicsek.o neighbour_list.o
 	rm -f test.xyz
 	time ./a.out
 	rm a.out
-
 
 test: test.cpp vicsek.o neighbour_list.o
 	$(CC) $(CPPFLAGS) test.cpp vicsek.o neighbour_list.o
 	time ./a.out
 	rm a.out
 
-
-prof: main.cpp vicsek.o neighbour_list.o
-	$(CC) $(CPPFLAGS) -g main.cpp neighbour_list.cpp vicsek.cpp
+cov:
+	rm -f *.o
+	rm -f *.a
+	$(CC) $(CPPFLAGS) -fprofile-arcs -ftest-coverage -c neighbour_list.cpp -o neighbour_list.o
+	$(CC) $(CPPFLAGS) -fprofile-arcs -ftest-coverage -c vicsek.cpp -o vicsek.o
+	$(CC) $(CPPFLAGS) -fprofile-arcs -ftest-coverage main.cpp vicsek.o neighbour_list.o
 	./a.out
-	gprof ./a.out | gprof2dot | dot -Tpng -o output.png
+	gcovr --gcov-executable "llvm-cov gcov" -r . --html --html-details -o out.html
 	rm -f a.out
 
-prof_mac: main.cpp vicsek.o neighbour_list.o
-	$(CC) $(CPPFLAGS) main.cpp neighbour_list.o vicsek.o
+prof: main.cpp vicsek.o neighbour_list.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) main.cpp vicsek.o neighbour_list.o
+	perf record ./a.out
+	perf report
+	rm -f a.out
 
 clean:
 	rm -f *.o

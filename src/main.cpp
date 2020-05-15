@@ -1,16 +1,16 @@
 #include "vicsek.h"
 
 int main(){
-    int jump = 1;
+    int jump = 10;
 
-    Attanasi2014PCB system{
-        100, 1.0, 0.05, 0.02, 0.03,
+    Vicsek3DPBC system{
+        200, 1.0, 0.01, 10, 0.05,
     };
     system.dump("test.xyz");
 
     cout << "system created" << endl;
 
-    for (int step=0; step < 500; step++){
+    for (int step=0; step < 1000; step++){
         if (step % 20 == 0){
             system.move(true);
         }
@@ -22,7 +22,7 @@ int main(){
 
     cout << "movement works" << endl;
 
-    for (int step=0; step < 500; step++){
+    for (int step=0; step < 1000; step++){
         if (step % 20 == 0){
             system.move(true);
         }
