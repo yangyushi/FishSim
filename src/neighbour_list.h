@@ -7,6 +7,7 @@
 
 using namespace std;
 
+using Conn = vector< vector <int> >;
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
 using ConnMat = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
 using Indices = vector< double >;  // size is n
@@ -56,6 +57,7 @@ class VerletList3D{
         void get_dmat(Coord3D& positoins, DistMat& dist_mat);
         void get_cmat(Coord3D& positoins, ConnMat& conn_mat);
         void get_cmat_slow(Coord3D& positoins, ConnMat& conn_mat);
+        Conn get_conn(Coord3D& positions);
 };
 
 
@@ -82,6 +84,7 @@ class CellList3D{
         void build(Coord3D& positions);
         void get_dmat(Coord3D& positions, DistMat& dist_mat);
         void get_cmat(Coord3D& positions, ConnMat& conn_mat);
+        Conn get_conn(Coord3D& positions);
 };
 
 
@@ -109,6 +112,7 @@ class CellList2D{
         void build(Coord2D& positions);
         void get_dmat(Coord2D& positions, DistMat& dist_mat);
         void get_cmat(Coord2D& positions, ConnMat& conn_mat);
+        Conn get_conn(Coord2D& positions);
 };
 
 
