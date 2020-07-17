@@ -30,7 +30,7 @@ class Vicsek3D{
         double noise_;
         double speed_;
         int n_;
-        ConnMat conn_mat_;
+        Conn connections_;
         void align();
         void add_noise();
         void rotate_noise(Coord3D& noise_xyz);
@@ -83,11 +83,22 @@ class Vicsek3DPBCVN : public Vicsek3DPBC{
 
 
 class Vicsek3DPBCInertia : public Vicsek3DPBC{
-    private:
+    public:
         double alpha_;
         Coord3D old_velocities_;
-    public:
         Vicsek3DPBCInertia(int n, double r, double eta, double box, double v0, double alpha);
+        void move(bool rebuild);
+};
+
+
+/*
+ * Anti-ferromagnetic version of Vicsek model, J = -1 not 1
+ */
+class Vicsek3DPBCInertiaAF : public Vicsek3DPBCInertia{
+    private:
+        void align_af();
+    public:
+        Vicsek3DPBCInertiaAF(int n, double r, double eta, double box, double v0, double alpha);
         void move(bool rebuild);
 };
 
@@ -140,7 +151,7 @@ class Vicsek2DPBCVNCO : public Vicsek2DPBC{
                 int n, double r, double eta, double box, double v0,  // vicsek model
                 double a, double b, double ra, double re, double rc  // for cohesion
                 );
-        // default cohesionparameter
+        // default cohesion parameter
         Vicsek2DPBCVNCO(int n, double r, double eta, double box, double v0);  
         void move(bool rebuild);
 };
