@@ -98,7 +98,6 @@ class Vicsek2DPBC{
         double noise_;
         double speed_;
         double box_;
-        int n_;
         ConnMat conn_mat_;
 
         void align();
@@ -106,6 +105,7 @@ class Vicsek2DPBC{
         inline void fix_positions(){positions_ -= box_ * (positions_ / box_).floor();}
 
     public:
+        int n_;
         Coord2D positions_;
         Coord2D velocities_;
         CellList2D cell_list_;

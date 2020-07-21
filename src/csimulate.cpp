@@ -95,7 +95,6 @@ const char* docstring_vicsek_3d_pbc_inertia_af =\
     ;
 
 
-
 const char* docstring_vicsek_2d_pbc =\
     "2D Vicsek simulation with scarlar (intrinsic) noise"\
     " and periodic boundary condition"\
@@ -138,22 +137,33 @@ const char* docstring_vicsek_2d_pbc_vn =\
     ;
 
 
-py::array_t<double> vicsek_3d_pbc(
-        int n, double box, double eta, double v0, double r,
-        int pre_steps, int run_steps, int jump=1, string load_file=""
-        ){
-    int update_step = floor(r / v0); // the frequency to update the cell list
-    if (update_step < 1){ update_step = 1; }
-    const int offset_frame = 6 * n;  // size of each frame
-    int offset = 0;
 
-    Vicsek3DPBC system{n, r, eta, box, v0};
+/*
+ * get the frequency to update the neighbour list
+ */
+int get_update_step(int r, int v0){
+    int update_step = floor(r / v0); // 
+    if (update_step < 1){
+        update_step = 1;
+    }
+    return update_step;
+}
+
+template<class T>
+py::array_t<double> simulate(
+        T system, int update_step, int pre_steps, int run_steps, int jump,
+        string load_file, string dump_file
+        ){
+    int dim = system.positions_.rows();
+    const int offset_frame = 2 * dim * system.n_;  // size of each frame
+    int offset = 0;
+    bool should_dump = dump_file.size() > 0;
 
     if (load_file.size() > 0){
-        system.load(load_file);
+        load(system, load_file);
     }
 
-    py::array_t<double> result = py::array_t<double>(run_steps * n * 6);
+    py::array_t<double> result = py::array_t<double>(run_steps * system.n_ * dim * 2);
     auto buffer_result = result.request();
     auto *ptr_result = (double *) buffer_result.ptr;
 
@@ -175,312 +185,84 @@ py::array_t<double> vicsek_3d_pbc(
             system.move(false);
         }
         if (step % jump == 0){
-            for (int i = 0; i < n; i++){
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d;
+            for (int i = 0; i < system.n_; i++){
+                for (int d = 0; d < dim; d++){
+                    offset = (offset_frame * cursor) + (i * 2 * dim) + d;
                     ptr_result[offset] = system.positions_(d, i);
                 }
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d + 3;
+                for (int d = 0; d < dim; d++){
+                    offset = (offset_frame * cursor) + (i * 2 * dim) + d + dim;
                     ptr_result[offset] = system.velocities_(d, i);
                 }
             }
             cursor++;
+            if (should_dump){
+                dump(system, dump_file);
+            }
         }
     }
-    result.resize({run_steps, n, 6});
+    result.resize({run_steps, system.n_, 2 * dim});
+
     return result;
+}
+
+py::array_t<double> vicsek_3d_pbc(
+        int n, double box, double eta, double v0, double r,
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
+        ){
+    Vicsek3DPBC system{n, r, eta, box, v0};
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
 }
 
 
 py::array_t<double> vicsek_3d_pbc_inertia(
         int n, double box, double eta, double v0, double r, double alpha,
-        int pre_steps, int run_steps, int jump=1,
-        string load_file="", string output_file=""
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
         ){
-    int update_step = floor(r / v0); // the frequency to update the cell list
-    if (update_step < 1){ update_step = 1; }
-    const int offset_frame = 6 * n;  // size of each frame
-    int offset = 0;
-
-    bool output = output_file.size() > 0;
-
     Vicsek3DPBCInertia system{n, r, eta, box, v0, alpha};
-
-    if (load_file.size() > 0){
-        system.load(load_file);
-    }
-
-    py::array_t<double> result = py::array_t<double>(run_steps * n * 6);
-    auto buffer_result = result.request();
-    auto *ptr_result = (double *) buffer_result.ptr;
-
-    for (int step = 0; step < pre_steps; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-    }
-
-    int cursor = 0;
-    for (int step = 0; step < run_steps * jump; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-        if (step % jump == 0){
-            for (int i = 0; i < n; i++){
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d;
-                    ptr_result[offset] = system.positions_(d, i);
-                }
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d + 3;
-                    ptr_result[offset] = system.velocities_(d, i);
-                }
-            }
-            cursor++;
-            if (output){
-                system.dump(output_file);
-            }
-        }
-    }
-    result.resize({run_steps, n, 6});
-    return result;
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
 }
 
 
 py::array_t<double> vicsek_3d_pbc_inertia_af(
         int n, double box, double eta, double v0, double r, double alpha,
-        int pre_steps, int run_steps, int jump=1,
-        string load_file="", string output_file=""
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
         ){
-    int update_step = floor(r / v0); // the frequency to update the cell list
-    if (update_step < 1){ update_step = 1; }
-    const int offset_frame = 6 * n;  // size of each frame
-    int offset = 0;
-
-    bool output = output_file.size() > 0;
-
     Vicsek3DPBCInertiaAF system{n, r, eta, box, v0, alpha};
-
-    if (load_file.size() > 0){
-        system.load(load_file);
-    }
-
-    py::array_t<double> result = py::array_t<double>(run_steps * n * 6);
-    auto buffer_result = result.request();
-    auto *ptr_result = (double *) buffer_result.ptr;
-
-    for (int step = 0; step < pre_steps; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-    }
-
-    int cursor = 0;
-    for (int step = 0; step < run_steps * jump; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-        if (step % jump == 0){
-            for (int i = 0; i < n; i++){
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d;
-                    ptr_result[offset] = system.positions_(d, i);
-                }
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d + 3;
-                    ptr_result[offset] = system.velocities_(d, i);
-                }
-            }
-            cursor++;
-            if (output){
-                system.dump(output_file);
-            }
-        }
-    }
-    result.resize({run_steps, n, 6});
-    return result;
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
 }
 
 
 py::array_t<double> attanasi2014pcb(
         int n, double eta, double v0, double b, double r,
-        int pre_steps, int run_steps, int jump=1,
-        string load_file="", string output_file=""
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
         ){
-    int update_step = floor(r / v0); // the frequency to update the cell list
-    if (update_step < 1){ update_step = 1; }
-    const int offset_frame = 6 * n;  // size of each frame
-    int offset = 0;
-    bool output = output_file.size() > 0;
-
     Attanasi2014PCB system{n, r, eta, v0, b};
-
-    if (load_file.size() > 0){
-        system.load(load_file);
-    }
-
-    py::array_t<double> result = py::array_t<double>(run_steps * n * 6);
-    auto buffer_result = result.request();
-    auto *ptr_result = (double *) buffer_result.ptr;
-
-    for (int step = 0; step < pre_steps; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-    }
-    int cursor = 0;
-    for (int step = 0; step < run_steps * jump; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-        if (step % jump == 0){
-            for (int i = 0; i < n; i++){
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d;
-                    ptr_result[offset] = system.positions_(d, i);
-                }
-                for (int d = 0; d < 3; d++){
-                    offset = (offset_frame * cursor) + (i * 6) + d + 3;
-                    ptr_result[offset] = system.velocities_(d, i);
-                }
-            }
-            cursor++;
-            if (output){
-                system.dump(output_file);
-            }
-        }
-    }
-    result.resize({run_steps, n, 6});
-    return result;
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
 }
 
 
 py::array_t<double> vicsek_2d_pbc(
         int n, double box, double eta, double v0, double r,
-        int pre_steps, int run_steps, int jump=1, string load_file=""
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
         ){
-    int update_step = floor(r / v0); // the frequency to update the cell list
-    if (update_step < 1){ update_step = 1; }
-    const int offset_frame = 4 * n;  // size of each frame
-    int offset = 0;
-
     Vicsek2DPBC system{n, r, eta, box, v0};
-
-    if (load_file.size() > 0){
-        system.load(load_file);
-    }
-
-    py::array_t<double> result = py::array_t<double>(run_steps * n * 4);
-    auto buffer_result = result.request();
-    auto *ptr_result = (double *) buffer_result.ptr;
-
-    for (int step = 0; step < pre_steps; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-    }
-
-    int cursor = 0;
-    for (int step = 0; step < run_steps * jump; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-        if (step % jump == 0){
-            for (int i = 0; i < n; i++){
-                for (int d = 0; d < 2; d++){
-                    offset = (offset_frame * cursor) + (i * 4) + d;
-                    ptr_result[offset] = system.positions(d, i);
-                }
-                for (int d = 0; d < 2; d++){
-                    offset = (offset_frame * cursor) + (i * 4) + d + 2;
-                    ptr_result[offset] = system.velocities(d, i);
-                }
-            }
-            cursor++;
-        }
-    }
-    result.resize({run_steps, n, 4});
-    return result;
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
 }
 
 
 py::array_t<double> vicsek_2d_pbc_vn(
         int n, double box, double eta, double v0, double r,
-        int pre_steps, int run_steps, int jump=1, string load_file=""
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
         ){
-    int update_step = floor(r / v0); // the frequency to update the cell list
-    if (update_step < 1){ update_step = 1; }
-    const int offset_frame = 4 * n;  // size of each frame
-    int offset = 0;
-
     Vicsek2DPBCVN system{n, r, eta, box, v0};
-
-    if (load_file.size() > 0){
-        system.load(load_file);
-    }
-
-    py::array_t<double> result = py::array_t<double>(run_steps * n * 4);
-    auto buffer_result = result.request();
-    auto *ptr_result = (double *) buffer_result.ptr;
-
-    for (int step = 0; step < pre_steps; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-    }
-
-    int cursor = 0;
-    for (int step = 0; step < run_steps * jump; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else{
-            system.move(false);
-        }
-        if (step % jump == 0){
-            for (int i = 0; i < n; i++){
-                for (int d = 0; d < 2; d++){
-                    offset = (offset_frame * cursor) + (i * 4) + d;
-                    ptr_result[offset] = system.positions(d, i);
-                }
-                for (int d = 0; d < 2; d++){
-                    offset = (offset_frame * cursor) + (i * 4) + d + 2;
-                    ptr_result[offset] = system.velocities(d, i);
-                }
-            }
-            cursor++;
-        }
-    }
-    result.resize({run_steps, n, 4});
-    return result;
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
 }
 
 
@@ -491,41 +273,41 @@ PYBIND11_MODULE(csimulate, m){
             "vicsek_3d_pbc", &vicsek_3d_pbc, docstring_vicsek_3d_pbc,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
             py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")=""
+            py::arg("load_file")="", py::arg("dump_file")=""
            );
 
     m.def(
             "vicsek_3d_pbc_inertia", &vicsek_3d_pbc_inertia, docstring_vicsek_3d_pbc_inertia,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"), py::arg("alpha"),
             py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")="", py::arg("output_file")
+            py::arg("load_file")="", py::arg("dump_file")
            );
 
     m.def(
             "vicsek_3d_pbc_inertia_af", &vicsek_3d_pbc_inertia_af, docstring_vicsek_3d_pbc_inertia_af,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"), py::arg("alpha"),
             py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")="", py::arg("output_file")
+            py::arg("load_file")="", py::arg("dump_file")
            );
 
     m.def(
             "attanasi2014pcb", &attanasi2014pcb, docstring_attanasi2014pcb,
             py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("b"), py::arg("r"),
             py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")="", py::arg("output_file")=""
+            py::arg("load_file")="", py::arg("dump_file")=""
            );
 
     m.def(
             "vicsek_2d_pbc", &vicsek_2d_pbc, docstring_vicsek_2d_pbc,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
             py::arg("pre_steps"), py::arg("run_steps"),
-            py::arg("jump")=1, py::arg("load_file")=""
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
            );
 
     m.def(
             "vicsek_2d_pbc_vn", &vicsek_2d_pbc_vn, docstring_vicsek_2d_pbc_vn,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
             py::arg("pre_steps"), py::arg("run_steps"),
-            py::arg("jump")=1, py::arg("load_file")=""
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")=""
            );
 }
