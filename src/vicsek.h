@@ -17,19 +17,10 @@ using namespace std;
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 
-using Coord3D = Eigen::Array<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
-using Vec3D = Eigen::Array3d;  // (3, 1)
-using RotMat = Eigen::Matrix3d;
-
-using Coord2D = Eigen::Array<double, 2, Eigen::Dynamic, Eigen::RowMajor>;  // (2, n)
-using Vec2D = Eigen::Array2d;  // (2, )
-
-
 class Vicsek3D{
     protected:
         double noise_;
         double speed_;
-        int n_;
         Conn connections_;
         void align();
         void add_noise();
@@ -39,13 +30,12 @@ class Vicsek3D{
         VerletList3D verlet_list_;
 
     public:
+        int n_;
         Coord3D positions_;
         Coord3D velocities_;
 
         Vicsek3D(int n, double r, double eta, double v0);
         void move(bool rebuild);
-        void dump(string filename);
-        void load(string filename);
 };
 
 
@@ -105,25 +95,23 @@ class Vicsek3DPBCInertiaAF : public Vicsek3DPBCInertia{
 
 class Vicsek2DPBC{
     protected:
-        double noise;
-        double speed;
-        double box;
-        int n;
-        ConnMat conn_mat;
+        double noise_;
+        double speed_;
+        double box_;
+        int n_;
+        ConnMat conn_mat_;
 
         void align();
         void add_noise();
-        inline void fix_positions(){positions -= box * (positions / box).floor();}
+        inline void fix_positions(){positions_ -= box_ * (positions_ / box_).floor();}
 
     public:
-        Coord2D positions;
-        Coord2D velocities;
-        CellList2D cell_list;
+        Coord2D positions_;
+        Coord2D velocities_;
+        CellList2D cell_list_;
 
         Vicsek2DPBC(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
-        void dump(string filename);
-        void load(string filename);
         Vec2D get_shift(Vec2D p1, Vec2D p2);
 };
 
@@ -166,5 +154,113 @@ void normalise(Coord3D& xyz, double spd);
 
 void normalise(Coord2D& xy);
 void normalise(Coord2D& xy, double spd);
+
+/*
+ * dump the current phase point to an xyz file
+ * it works with both 2D and 3D system
+ */
+template<class T>
+void dump(T system, string filename){
+    ofstream f;
+    f.open(filename, ios::out | ios::app);
+    f << system.n_ << endl;
+    if (system.positions_.rows() == 3){
+        f << "id, x, y, z, vx, vy, vz" << endl;
+        for (int i = 0; i < system.n_; i++ ) {
+            f << i << " "
+                << system.positions_(0, i)  << " "
+                << system.positions_(1, i)  << " "
+                << system.positions_(2, i)  << " "
+                << system.velocities_(0, i) << " "
+                << system.velocities_(1, i) << " "
+                << system.velocities_(2, i) << endl;
+        }
+    } else if (system.positions_.rows() == 2){
+        f << "id, x, y, vx, vy" << endl;
+        for (int i = 0; i < system.n_; i++ ) {
+            f << i << " "
+              << system.positions_(0, i)  << " "
+              << system.positions_(1, i)  << " "
+              << system.velocities_(0, i) << " "
+              << system.velocities_(1, i) << " " << endl;
+        }
+    } else {
+        throw("invalid dimension");
+    }
+    f.close();
+}
+
+
+/*
+ * load the phase point from the *last* frame of an xyz file
+ * it works with both 2D and 3D system
+ * The xyz file should be generated with the `dump` function
+ */
+template<class T>
+void load(T system, string filename){
+    ifstream f;
+    string line;
+    regex head_pattern{"\\d+"};
+    smatch matched;
+    int head_lines = 2;
+    string num;
+    int N = 0;
+    int total_frame = 0;
+    
+    // find total number of frames
+    f.open(filename, ios::in);
+    while (f) {
+        getline(f, line);
+        if (regex_match(line, matched, head_pattern)){
+            N = stoi(line);
+            total_frame += 1;
+            for (int i=0; i<N; i++) getline(f, line);
+        }
+    }
+    f.close();
+    
+    // jump to the last frame 
+    f.open(filename, ios::in);
+    for (int i = 0; i < total_frame - 1; i++){
+        for (int j = 0; j < N + head_lines; j++){
+        getline(f, line);
+        }
+    }
+    
+    // load the data
+    if (system.positions_.rows() == 3){
+        for (int i = 0; i < N + head_lines; i++){
+            getline(f, line);
+            if (i > 1) {
+                istringstream ss(line);
+                ss >> num;
+                for (int j = 0; j < 3; j++){
+                    ss >> system.positions_(j, i - head_lines);
+                }
+                for (int j = 0; j < 3; j++){
+                    ss >> system.velocities_(j, i - head_lines);
+                }
+            }
+        }
+    } else if (system.positions_.rows() == 2) {
+        for (int i = 0; i < N + head_lines; i++){
+            getline(f, line);
+            
+            if (i > 1) {
+                istringstream ss(line);
+                ss >> num;
+                for (int j = 0; j < 2; j++){
+                    ss >> system.positions_(j, i - head_lines);
+                }
+                for (int j = 0; j < 2; j++){
+                    ss >> system.velocities_(j, i - head_lines);
+                }
+            }
+        }
+    } else {
+        throw("invalid dimension");
+    }
+    f.close();
+}
 
 #endif

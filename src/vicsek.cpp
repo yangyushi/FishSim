@@ -271,74 +271,6 @@ void Vicsek3D::move(bool rebuild){
 }
 
 
-void Vicsek3D::dump(string filename){
-    ofstream f;
-    f.open(filename, ios::out | ios::app);
-    f << n_ << endl;
-    f << "id, x, y, z, vx, vy, vz" << endl;
-    for (int i = 0; i < n_; i++ ) {
-        f << i << " "
-            << positions_(0, i)  << " "
-            << positions_(1, i)  << " "
-            << positions_(2, i)  << " "
-            << velocities_(0, i) << " "
-            << velocities_(1, i) << " "
-            << velocities_(2, i) << endl;
-    }
-    f.close();
-}
-
-
-void Vicsek3D::load(string filename){
-    /*
-     * Load the configuration from the last frame in a xyz file
-     * The xyz file should be produced by this->dump
-     */
-    ifstream f;
-    string line;
-    regex head_pattern{"\\d+"};
-    smatch matched;
-    int head_lines = 2;
-    string num;
-    int N = 0;
-    int total_frame = 0;
-    
-    f.open(filename, ios::in);
-    while (f) {
-        getline(f, line);
-        if (regex_match(line, matched, head_pattern)){
-            N = stoi(line);
-            total_frame += 1;
-            for (int i=0; i<N; i++) getline(f, line);
-        }
-    }
-    f.close();
-    
-    f.open(filename, ios::in);
-    for (int i = 0; i < total_frame - 1; i++){
-        for (int j = 0; j < N + head_lines; j++){
-        getline(f, line);
-        }
-    }
-    
-    for (int i = 0; i < N + head_lines; i++){
-        getline(f, line);
-        
-        if (i > 1) {
-            istringstream ss(line);
-            ss >> num;
-            for (int j = 0; j < 3; j++){
-                ss >> positions_(j, i - head_lines);
-            }
-            for (int j = 0; j < 3; j++){
-                ss >> velocities_(j, i - head_lines);
-            }
-        }
-    }
-    f.close();
-}
-
-
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
     : Vicsek3D{n, r, eta, v0}, box_{box}, cell_list_{r, box, true} {
         double r_box = pow(box * box * box / n, 1.0/3.0);
@@ -505,128 +437,64 @@ void Vicsek3DPBCVN::move(bool rebuild){
 
 
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
-    : noise(eta), speed(v0), box(box), n(n), conn_mat(n, n),
-      positions(2, n), velocities(2, n), cell_list(r, box, true){
+    : noise_(eta), speed_(v0), box_(box), n_(n), conn_mat_(n, n),
+      positions_(2, n), velocities_(2, n), cell_list_(r, box, true){
         double r_box = pow(box * box/ n, 0.5);
         if (r_box > r){
             int sc = floor(box / r_box / 2);
-            cell_list.update_sc(sc);
+            cell_list_.update_sc(sc);
         }
-        positions.setRandom(2, n);
-        positions = (positions + 1) / 2 * box;
-        velocities.setRandom(2, n);
-        normalise(velocities, v0);
+        positions_.setRandom(2, n);
+        positions_ = (positions_ + 1) / 2 * box;
+        velocities_.setRandom(2, n);
+        normalise(velocities_, v0);
     }
 
 
 void Vicsek2DPBC::align(){
-    Coord2D new_velocities{2, n};
+    Coord2D new_velocities{2, n_};
     Vec2D v_align;
 
-    for (int i = 0; i < this->n; i++){
+    for (int i = 0; i < n_; i++){
         v_align << 0, 0;
 
-        for (int j = 0; j < conn_mat.rows(); j++){
-            if (conn_mat(i, j) > 0){
-                v_align += velocities.col(j);
+        for (int j = 0; j < conn_mat_.rows(); j++){
+            if (conn_mat_(i, j) > 0){
+                v_align += velocities_.col(j);
             }
         }
         new_velocities.col(i) << v_align;
     }
 
-    velocities = new_velocities;
+    velocities_ = new_velocities;
 }
 
 
 void Vicsek2DPBC::add_noise(){
-    Property noise_phi{1, this->n};
-    Property phi = xy_to_phi(velocities);
+    Property noise_phi{1, n_};
+    Property phi = xy_to_phi(velocities_);
 
     noise_phi.setRandom(); // ~ U(-1, 1)
-    noise_phi *= PI * this->noise; // phi ~ U(-PI * eta, PI * eta)
+    noise_phi *= PI * noise_; // phi ~ U(-PI * eta, PI * eta)
     phi += noise_phi;
 
-    velocities.row(0) = speed * cos(phi);
-    velocities.row(1) = speed * sin(phi);
+    velocities_.row(0) = speed_ * cos(phi);
+    velocities_.row(1) = speed_ * sin(phi);
 }
 
 
 void Vicsek2DPBC::move(bool rebuild){
-    if (rebuild) cell_list.build(positions);
-    cell_list.get_cmat(positions, conn_mat);
+    if (rebuild) cell_list_.build(positions_);
+    cell_list_.get_cmat(positions_, conn_mat_);
 
     align();
-    normalise(velocities);  // speed = 1
+    normalise(velocities_);  // speed = 1
     add_noise();  // speed = speed
 
     for (int d = 0; d < 2; d++){
-        positions.row(d) += velocities.row(d);
+        positions_.row(d) += velocities_.row(d);
     }
     fix_positions();
-}
-
-
-void Vicsek2DPBC::dump(string filename){
-    ofstream f;
-    f.open(filename, ios::out | ios::app);
-    f << this->n << endl;
-    f << "id, x, y, vx, vy" << endl;
-    for (int i = 0; i < this->n; i++ ) {
-        f << i << " "
-          << positions(0, i)  << " " <<  positions(1, i)  << " "
-          << velocities(0, i) << " " <<  velocities(1, i) << " " << endl;
-    }
-    f.close();
-}
-
-
-void Vicsek2DPBC::load(string filename){
-    /*
-     * Load the configuration from the last frame in a xyz file
-     * The xyz file should be produced by this->dump
-     */
-    ifstream f;
-    string line;
-    regex head_pattern{"\\d+"};
-    smatch matched;
-    int head_lines = 2;
-    string num;
-    int N = 0;
-    int total_frame = 0;
-    
-    f.open(filename, ios::in);
-    while (f) {
-        getline(f, line);
-        if (regex_match(line, matched, head_pattern)){
-            N = stoi(line);
-            total_frame += 1;
-            for (int i=0; i<N; i++) getline(f, line);
-        }
-    }
-    f.close();
-    
-    f.open(filename, ios::in);
-    for (int i = 0; i < total_frame - 1; i++){
-        for (int j = 0; j < N + head_lines; j++){
-            getline(f, line);
-        }
-    }
-    
-    for (int i = 0; i < N + head_lines; i++){
-        getline(f, line);
-        
-        if (i > 1) {
-            istringstream ss(line);
-            ss >> num;
-            for (int j = 0; j < 2; j++){
-                ss >> positions(j, i - head_lines);
-            }
-            for (int j = 0; j < 2; j++){
-                ss >> velocities(j, i - head_lines);
-            }
-        }
-    }
-    f.close();
 }
 
 
@@ -636,12 +504,12 @@ Vec2D Vicsek2DPBC::get_shift(Vec2D p1, Vec2D p2){
 
     for (int d = 0; d < 2; d++){
         shift_1d = p1(d) - p2(d);
-        if (abs(shift_1d) > this->box / 2){
+        if (abs(shift_1d) > box_ / 2){
             if (shift_1d > 0){
-                shift_1d = this->box - shift_1d;
+                shift_1d = box_ - shift_1d;
             }
             else {
-                shift_1d += this->box;
+                shift_1d += box_;
             }
         }
         shift(d) = shift_1d;
@@ -658,43 +526,43 @@ void Vicsek2DPBCVN::noisy_align(){
     /*
      * See ginellEPJ2016 for equations
      */
-    Property noise_phi{1, this->n};
-    Coord2D noise_xy{2, this->n};
-    PropertyInt neighbour_nums{1, this->n};
-    Coord2D new_velocities{2, this->n};
+    Property noise_phi{1, n_};
+    Coord2D noise_xy{2, n_};
+    PropertyInt neighbour_nums{1, n_};
+    Coord2D new_velocities{2, n_};
     Vec2D v_align;
 
-    neighbour_nums = conn_mat.colwise().sum(); // -> m_i
+    neighbour_nums = conn_mat_.colwise().sum(); // -> m_i
 
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= PI; // phi ~ U(-PI, PI)
 
-    noise_xy.row(0) = cos(noise_phi) * speed * noise; // -> eta * xi_i^t
-    noise_xy.row(1) = sin(noise_phi) * speed * noise;
+    noise_xy.row(0) = cos(noise_phi) * speed_ * noise_; // -> eta * xi_i^t
+    noise_xy.row(1) = sin(noise_phi) * speed_ * noise_;
 
-    for (int i = 0; i < this->n; i++){
+    for (int i = 0; i < n_; i++){
         v_align << 0, 0;
 
-        for (int j = 0; j < conn_mat.cols(); j++){  // \sum n_ij^t s_j^t
-            if (conn_mat(i, j) > 0){
-                v_align += velocities.col(j);
+        for (int j = 0; j < conn_mat_.cols(); j++){  // \sum n_ij^t s_j^t
+            if (conn_mat_(i, j) > 0){
+                v_align += velocities_.col(j);
             }
         }
         new_velocities.col(i) = v_align + noise_xy.col(i) * neighbour_nums(0, i);
     }
 
-    normalise(new_velocities, speed);
-    velocities = new_velocities;
+    normalise(new_velocities, speed_);
+    velocities_ = new_velocities;
 }
 
 
 void Vicsek2DPBCVN::move(bool rebuild){
-    if (rebuild) cell_list.build(positions);
+    if (rebuild) cell_list_.build(positions_);
 
-    cell_list.get_cmat(positions, conn_mat);
+    cell_list_.get_cmat(positions_, conn_mat_);
     noisy_align();
 
-    for (int d = 0; d < 2; d++){ positions.row(d) += velocities.row(d); }
+    for (int d = 0; d < 2; d++){ positions_.row(d) += velocities_.row(d); }
     fix_positions();
 }
 
@@ -722,45 +590,45 @@ void Vicsek2DPBCVNCO::update_velocity(){
     /*
      * See chatelEPJ2008 for equations
      */
-    Property noise_phi{1, this->n};
-    Coord2D noise_xy{2, this->n};
-    PropertyInt neighbour_nums{1, this->n};
-    Coord2D new_velocities{2, this->n};
+    Property noise_phi{1, n_};
+    Coord2D noise_xy{2, n_};
+    PropertyInt neighbour_nums{1, n_};
+    Coord2D new_velocities{2, n_};
     new_velocities.setZero();
     Vec2D shift;
     Vec2D v_force;
     Vec2D v_avoid;
     double dij{0};
     double n_avoid{0};
-    double a = alpha_ / speed;
+    double a = alpha_ / speed_;
 
-    neighbour_nums = conn_mat.colwise().sum(); // -> m_i
+    neighbour_nums = conn_mat_.colwise().sum(); // -> m_i
 
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= PI; // phi ~ U(-PI, PI)
 
-    noise_xy.row(0) = cos(noise_phi) * noise; // -> eta * xi_i^t
-    noise_xy.row(1) = sin(noise_phi) * noise;
+    noise_xy.row(0) = cos(noise_phi) * noise_; // -> eta * xi_i^t
+    noise_xy.row(1) = sin(noise_phi) * noise_;
 
-    for (int i = 0; i < this->n; i++){
+    for (int i = 0; i < n_; i++){
         v_force << 0, 0;
         v_avoid << 0, 0;
         n_avoid = 0;
-        for (int j = 0; j < this->n; j++){  // \sum n_ij^t s_j^t
-            if (conn_mat(i, j) > 0){
+        for (int j = 0; j < n_; j++){  // \sum n_ij^t s_j^t
+            if (conn_mat_(i, j) > 0){
                 if (i == j){
-                    v_force += a * velocities.col(j);
+                    v_force += a * velocities_.col(j);
                 } else {
-                    shift = get_shift(positions.col(j), positions.col(i));
+                    shift = get_shift(positions_.col(j), positions_.col(i));
                     dij = shift.matrix().norm();
                     shift /= dij;
                     if (dij < rc_) {
                         n_avoid += 1;  // fij = infty
                         v_avoid += shift * -1;
                     } else if (dij < ra_) {
-                        v_force += a * velocities.col(j) + beta_ * shift * c_ * (dij - re_);
+                        v_force += a * velocities_.col(j) + beta_ * shift * c_ * (dij - re_);
                     } else {
-                        v_force += a * velocities.col(j) + beta_ * shift;  // fij = 1
+                        v_force += a * velocities_.col(j) + beta_ * shift;  // fij = 1
                     }
                 }
             }
@@ -772,18 +640,20 @@ void Vicsek2DPBCVNCO::update_velocity(){
         }
     }
 
-    normalise(new_velocities, speed);
-    velocities = new_velocities;
+    normalise(new_velocities, speed_);
+    velocities_ = new_velocities;
 }
 
 
 void Vicsek2DPBCVNCO::move(bool rebuild){
-    if (rebuild) cell_list.build(positions);
+    if (rebuild) cell_list_.build(positions_);
 
-    cell_list.get_cmat(positions, conn_mat);
+    cell_list_.get_cmat(positions_, conn_mat_);
     update_velocity();
 
-    for (int d = 0; d < 2; d++){ positions.row(d) += velocities.row(d); }
+    for (int d = 0; d < 2; d++){
+        positions_.row(d) += velocities_.row(d);
+    }
     fix_positions();
 }
 

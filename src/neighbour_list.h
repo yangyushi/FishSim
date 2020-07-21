@@ -25,6 +25,9 @@ using Index2D = array<double, 2>;  // size is 3
 using Indices2D = vector< Index2D >;
 using Head2D = map<Index2D, int>;
 
+using RotMat = Eigen::Matrix3d;
+using Vec2D = Eigen::Array2d;  // (2, 1)
+using Vec3D = Eigen::Array3d;  // (3, 1)
 
 
 Index3D unravel_index(int index, Index3D shape);
