@@ -23,8 +23,11 @@ csimulate`python3-config --extension-suffix`: csimulate.cpp libcsimulate.a
 	mv *.so ../lib
 	mv *.a ../lib
 
-libcsimulate.a: vicsek.o neighbour_list.o
-	ar rcs libcsimulate.a vicsek.o neighbour_list.o
+libcsimulate.a: vicsek.o neighbour_list.o spin.o
+	ar rcs libcsimulate.a vicsek.o neighbour_list.o spin.o
+
+spin.o: spin.cpp
+	$(CC) $(CPPFLAGS) -c spin.cpp -o spin.o
 
 vicsek.o: vicsek.cpp
 	$(CC) $(CPPFLAGS) -c vicsek.cpp -o vicsek.o
@@ -32,13 +35,13 @@ vicsek.o: vicsek.cpp
 neighbour_list.o: neighbour_list.cpp
 	$(CC) $(CPPFLAGS) -c neighbour_list.cpp -o neighbour_list.o
 
-sim: main.cpp vicsek.o neighbour_list.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) main.cpp vicsek.o neighbour_list.o
+sim: main.cpp vicsek.o neighbour_list.o spin.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) main.cpp vicsek.o neighbour_list.o spin.o
 	rm -f test.xyz
 	time ./a.out
 	rm a.out
 
-test: test.cpp vicsek.o neighbour_list.o
+test: test.cpp vicsek.o neighbour_list.o spin.o
 	$(CC) $(CPPFLAGS) test.cpp vicsek.o neighbour_list.o
 	time ./a.out
 	rm a.out
@@ -53,7 +56,7 @@ cov:
 	gcovr --gcov-executable "llvm-cov gcov" -r . --html --html-details -o out.html
 	rm -f a.out
 
-prof: main.cpp vicsek.o neighbour_list.o
+prof: main.cpp vicsek.o neighbour_list.o spin.o
 	$(CC) $(CPPFLAGS) $(LINKFLAGS) main.cpp vicsek.o neighbour_list.o
 	perf record ./a.out
 	perf report
