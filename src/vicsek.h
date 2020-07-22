@@ -12,6 +12,8 @@
 #include <Eigen/LU>
 #include "neighbour_list.h"
 
+const double PI = 3.141592653589793238463;
+
 using namespace std;
 
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
@@ -44,7 +46,7 @@ class Vicsek3DPBC : public Vicsek3D{
         double box_;
         CellList3D cell_list_;
         inline void fix_positions(){
-            positions_ -= box_ * (positions_ / box_).floor();
+            positions_.array() -= box_ * (positions_.array() / box_).floor();
         }
 
     public:
@@ -102,7 +104,7 @@ class Vicsek2DPBC{
 
         void align();
         void add_noise();
-        inline void fix_positions(){positions_ -= box_ * (positions_ / box_).floor();}
+        inline void fix_positions(){positions_.array() -= box_ * (positions_.array() / box_).floor();}
 
     public:
         int n_;

@@ -2,8 +2,6 @@
 
 default_random_engine generator;
 
-const double PI = 3.141592653589793238463;
-
 
 Coord3D xyz_to_sphere(Coord3D& xyz){
     int n = xyz.cols();
@@ -11,16 +9,14 @@ Coord3D xyz_to_sphere(Coord3D& xyz){
     Coord3D sphere(3, xyz.cols());
     Property r(n);
 
-    r << sqrt( xyz.row(0).pow(2) +
-               xyz.row(1).pow(2) +
-               xyz.row(2).pow(2) );
+    r = xyz.colwise().norm();
 
     sphere.row(0) << r;
     sphere.row(1) << xyz.row(1).binaryExpr(
             xyz.row(0), [] (double a, double b) { return atan2(a,b);}
             ); // azimuth, phi
 
-    sphere.row(2) << asin(xyz.row(2) / r);
+    sphere.row(2) << asin(xyz.row(2).array() / r);
 
     return sphere;
 }
@@ -31,11 +27,11 @@ Coord3D sphere_to_xyz(Coord3D& sphere){
     Coord3D xyz(3, n);
     Property r_xy(n);
 
-    r_xy << sphere.row(0) * cos(sphere.row(2));
+    r_xy << sphere.array().row(0) * cos(sphere.row(2).array());
 
-    xyz.row(0) << r_xy * cos(sphere.row(1));
-    xyz.row(1) << r_xy * sin(sphere.row(1));
-    xyz.row(2) << sphere.row(0) * sin(sphere.row(2));
+    xyz.row(0) << r_xy * cos(sphere.row(1).array());
+    xyz.row(1) << r_xy * sin(sphere.row(1).array());
+    xyz.row(2) << sphere.array().row(0) * sin(sphere.array().row(2));
 
     return xyz;
 }
@@ -105,7 +101,7 @@ void normalise(Coord2D& xy, double spd){
 
 
 Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
-    : noise_(eta), speed_(v0), n_(n), verlet_list_(r, r*3),
+    : noise_(eta), speed_(v0), verlet_list_(r, r + v0), n_(n),
     positions_(3, n), velocities_(3, n) {
         positions_.setRandom(3, n);
         Property vz{n}, vphi{n}, vrxy{n};
@@ -148,20 +144,20 @@ void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
         rxy = sqrt(x * x + y * y);
         A << 0, 0, 1;
         B << x, y, z;
-        if ((A - B).matrix().norm() < 1e-10){
+        if ((A - B).norm() < 1e-10){
             velocities_.col(i) = noise_xyz.col(i);
-        } else if ((A + B).matrix().norm() < 1e-10){  // B close to (0, 0, -1)
+        } else if ((A + B).norm() < 1e-10){  // B close to (0, 0, -1)
             velocities_.col(i) << noise_xyz(0, i), noise_xyz(1, i), -noise_xyz(2, i);
         } else {
             u = A;
             v << x / rxy, y / rxy, 0;
-            w = B.matrix().cross(A.matrix());  // w = B x A
+            w = B.cross(A);  // w = B x A
             G <<   z, -rxy, 0,
                  rxy,    z, 0,
                    0,    0, 1;
             F << u.transpose(), v.transpose(), w.transpose();
             R = F.inverse() * (G * F);
-            velocities_.col(i) = (R * noise_xyz.col(i).matrix()) * speed_;
+            velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
         }
     }
 }
@@ -186,7 +182,7 @@ void Vicsek3D::rotate_noise_xyz(Coord3D& noise_xyz){
     for (int i = 0; i < n_; i++){
         v = velocities_.col(i);
         phi = atan2(v[1], v[0]);
-        theta = asin(v[2] / v.matrix().norm());
+        theta = asin(v[2] / v.norm());
         uvw << cos(phi), -sin(phi), 0,
                sin(phi),  cos(phi), 0,
                       0,         0, 1;
@@ -197,7 +193,7 @@ void Vicsek3D::rotate_noise_xyz(Coord3D& noise_xyz){
                         0, 1,           0,
              -sin(-theta), 0, cos(-theta);
         R = uvw * R3 * R2 * uvw.inverse() * R1;
-        velocities_.col(i) = R * noise_xyz.col(i).matrix() * speed_;
+        velocities_.col(i) = R * noise_xyz.col(i) * speed_;
     }
 }
 
@@ -214,15 +210,15 @@ void Vicsek3D::rotate_noise_fast(Coord3D& noise_xyz){
     for (int i = 0; i < n_; i++){
         A << 0, 0, 1;
         B << velocities_.col(i);
-        if ((A - B).matrix().norm() < 1e-10){ // B close to (0, 0, 1)
+        if ((A - B).norm() < 1e-10){ // B close to (0, 0, 1)
             velocities_.col(i) = noise_xyz.col(i);  // R -> I
-        } else if ((A + B).matrix().norm() < 1e-10){  // B close to (0, 0, -1)
+        } else if ((A + B).norm() < 1e-10){  // B close to (0, 0, -1)
             velocities_.col(i) << noise_xyz(0, i),  // R -> rotate to (0, 0, -1)
                                   noise_xyz(1, i),
                                 - noise_xyz(2, i);
         } else {
-            v = A.matrix().cross(B.matrix());  // w = A cross B
-            c = (A * B).sum();  // A dot B
+            v = A.cross(B);  // w = A cross B
+            c = A.dot(B);  // A dot B
             R1 << 0, -v[2], v[1], // the skew-symmetric matrix
                   v[2], 0, -v[0],
                  -v[1], v[0], 0;
@@ -230,7 +226,7 @@ void Vicsek3D::rotate_noise_fast(Coord3D& noise_xyz){
                  0, 1, 0,
                  0, 0, 1; 
             R = R + R1 + (R1 * R1) / (1 + c);
-            velocities_.col(i) = (R * noise_xyz.col(i).matrix()) * speed_;
+            velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
         }
     }
 }
@@ -248,7 +244,7 @@ void Vicsek3D::add_noise(){
     noise_phi.row(0) = Eigen::ArrayXd::NullaryExpr(n_, rand_phi); // phi ~ U(-PI, PI)
     noise_xyz.row(2) = Eigen::ArrayXd::NullaryExpr(n_, rand_z); //  z ~ U(1 - 2 * noise, 1)
 
-    noise_rxy = sqrt(1 - noise_xyz.row(2).pow(2));
+    noise_rxy = sqrt(1 - noise_xyz.array().row(2).pow(2));
     noise_xyz.row(0) = noise_rxy * cos(noise_phi);
     noise_xyz.row(1) = noise_rxy * sin(noise_phi);
 
@@ -279,7 +275,7 @@ Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
             cell_list_.update_sc(sc);
         }
         positions_.setRandom(3, n);
-        positions_ = (positions_ + 1) / 2 * box_;
+        positions_ = (positions_.array() + 1) / 2 * box_;
         velocities_.setRandom(3, n);
         normalise(velocities_, speed_);
     }
@@ -437,7 +433,7 @@ void Vicsek3DPBCVN::move(bool rebuild){
 
 
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
-    : noise_(eta), speed_(v0), box_(box), n_(n), conn_mat_(n, n),
+    : noise_(eta), speed_(v0), box_(box), conn_mat_(n, n), n_(n),
       positions_(2, n), velocities_(2, n), cell_list_(r, box, true){
         double r_box = pow(box * box/ n, 0.5);
         if (r_box > r){
@@ -445,7 +441,7 @@ Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
             cell_list_.update_sc(sc);
         }
         positions_.setRandom(2, n);
-        positions_ = (positions_ + 1) / 2 * box;
+        positions_ = (positions_.array() + 1) / 2 * box;
         velocities_.setRandom(2, n);
         normalise(velocities_, v0);
     }

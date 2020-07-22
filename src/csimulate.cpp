@@ -141,8 +141,8 @@ const char* docstring_vicsek_2d_pbc_vn =\
 /*
  * get the frequency to update the neighbour list
  */
-int get_update_step(int r, int v0){
-    int update_step = floor(r / v0); // 
+int get_update_step(double r, double v0){
+    int update_step = floor(r / v0);
     if (update_step < 1){
         update_step = 1;
     }
@@ -272,29 +272,29 @@ PYBIND11_MODULE(csimulate, m){
     m.def(
             "vicsek_3d_pbc", &vicsek_3d_pbc, docstring_vicsek_3d_pbc,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
-            py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")="", py::arg("dump_file")=""
+            py::arg("pre_steps"), py::arg("run_steps"),
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
            );
 
     m.def(
             "vicsek_3d_pbc_inertia", &vicsek_3d_pbc_inertia, docstring_vicsek_3d_pbc_inertia,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"), py::arg("alpha"),
-            py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")="", py::arg("dump_file")
+            py::arg("pre_steps"), py::arg("run_steps"),
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
            );
 
     m.def(
             "vicsek_3d_pbc_inertia_af", &vicsek_3d_pbc_inertia_af, docstring_vicsek_3d_pbc_inertia_af,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"), py::arg("alpha"),
-            py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")="", py::arg("dump_file")
+            py::arg("pre_steps"), py::arg("run_steps"),
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
            );
 
     m.def(
             "attanasi2014pcb", &attanasi2014pcb, docstring_attanasi2014pcb,
             py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("b"), py::arg("r"),
-            py::arg("pre_steps"), py::arg("run_steps"), py::arg("jump")=1,
-            py::arg("load_file")="", py::arg("dump_file")=""
+            py::arg("pre_steps"), py::arg("run_steps"),
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
            );
 
     m.def(

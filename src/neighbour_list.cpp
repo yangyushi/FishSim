@@ -140,7 +140,7 @@ void VerletList3D::build(Coord3D& positions){
     point_.push_back(0);
     for (int i = 0; i < size_; i++){
         for (int j = 0; j < size_; j++){
-            d2 = (positions.col(i) - positions.col(j)).pow(2).sum();
+            d2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
             if (d2 < rl2_){
                 nlist_.push_back(j);
             }
@@ -160,7 +160,7 @@ void VerletList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
         double dist2 = 0;
         for (int j = p0; j < point_[i+1]; j++){
             idx_j = nlist_[j];
-            dist2 = (positions.col(i) - positions.col(j)).pow(2).sum();
+            dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
             if (dist2 < rc2_){
                 dist_mat(i, idx_j) = sqrt(dist2);
             }
@@ -178,7 +178,7 @@ void VerletList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
         double dist2 = 0;
         for (int j = p0; j < point_[i + 1]; j++){
             idx_j = nlist_[j];
-            dist2 = (positions.col(i) - positions.col(idx_j)).pow(2).sum();
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
             if (dist2 < rc2_){
                 conn_mat(i, idx_j) = 1;
             }
@@ -196,7 +196,7 @@ Conn VerletList3D::get_conn(Coord3D& positions){
         double dist2 = 0;
         for (int j = p0; j < point_[i + 1]; j++){
             idx_j = nlist_[j];
-            dist2 = (positions.col(i) - positions.col(idx_j)).pow(2).sum();
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
             if (dist2 < rc2_){
                 connections[i].push_back(idx_j);
             }
@@ -212,7 +212,7 @@ void VerletList3D::get_cmat_slow(Coord3D& positions, ConnMat& conn_mat){
     #pragma omp parallel for
     for (int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
-            double dist2 = (positions.col(i) - positions.col(j)).pow(2).sum();
+            double dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
             if (dist2 < rc2_){
                 conn_mat(i, j) = 1;
             }
@@ -300,7 +300,7 @@ Indices3D CellList3D::get_neighbours_indices(Index3D cell_idx){
 void CellList3D::build(Coord3D& positions){
     size = positions.cols();
     CellIndices3D ci(ndim, size);  // discretise positions into cell indices
-    ci << floor(positions / box * sc).cast<int>();
+    ci << floor(positions.array() / box * sc).cast<int>();
 
     refill();
 
@@ -320,7 +320,7 @@ void CellList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
     dist_mat.setConstant(-1);
 
     CellIndices3D ci(ndim, size);
-    ci << floor(positions / box * sc).cast<int>();
+    ci << floor(positions.array() / box * sc).cast<int>();
 
     double rc2 = rc * rc;
     int max_cell_idx = pow(sc, ndim);
@@ -383,7 +383,7 @@ void CellList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
     conn_mat.setZero();
 
     CellIndices3D ci(ndim, size);
-    ci << floor(positions / box * sc).cast<int>();
+    ci << floor(positions.array() / box * sc).cast<int>();
 
     double rc2 = rc * rc;
     int max_cell_idx = pow(sc, ndim);
@@ -447,7 +447,7 @@ Conn CellList3D::get_conn(Coord3D& positions){
     }
 
     CellIndices3D ci(ndim, size);
-    ci << floor(positions / box * sc).cast<int>();
+    ci << floor(positions.array() / box * sc).cast<int>();
 
     double rc2 = rc * rc;
     int max_cell_idx = pow(sc, ndim);
@@ -575,7 +575,7 @@ Indices2D CellList2D::get_neighbours_indices(Index2D cell_idx){
 void CellList2D::build(Coord2D& positions){
     size = positions.cols();
     CellIndices2D ci(ndim, size);  // discretise positions into cell indices
-    ci << floor(positions / box * sc);
+    ci << floor(positions.array() / box * sc);
 
     refill();
 
@@ -605,7 +605,7 @@ void CellList2D::get_dmat(Coord2D& positions, DistMat& dist_mat){
     double rc2 = rc * rc;
 
     CellIndices2D ci(ndim, size);
-    ci << floor(positions / box * sc);
+    ci << floor(positions.array() / box * sc);
 
 
     int max_cell_idx = pow(sc, ndim);
@@ -677,7 +677,7 @@ void CellList2D::get_cmat(Coord2D& positions, ConnMat& conn_mat){
     double rc2 = rc * rc;
 
     CellIndices2D ci(ndim, size);
-    ci << floor(positions / box * sc);
+    ci << floor(positions.array() / box * sc);
 
 
     int max_cell_idx = pow(sc, ndim);
@@ -749,7 +749,7 @@ Conn CellList2D::get_conn(Coord2D& positions){
     double rc2 = rc * rc;
 
     CellIndices2D ci(ndim, size);
-    ci << floor(positions / box * sc);
+    ci << floor(positions.array() / box * sc);
 
 
     int max_cell_idx = pow(sc, ndim);
