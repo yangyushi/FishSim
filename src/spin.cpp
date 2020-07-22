@@ -83,3 +83,29 @@ void InertialSpin3D::update_spin(){
     }
 }
 
+InertialSpin3DPBC::InertialSpin3DPBC(
+        int n, double box, double r, double eta, double v0,
+        double j, double m, double f
+        )
+    : InertialSpin3D{n, r, eta, v0, j, m, f}, cell_list_{r, box, true}{
+        double r_box = pow(box * box * box / n, 1.0/3.0);
+        if (r_box > r){
+            int sc = floor(box / r_box / 2);
+            cell_list_.update_sc(sc);
+        }
+        positions_.setRandom(3, n);
+        positions_ = (positions_.array() + 1) / 2 * box_;
+    }
+
+void InertialSpin3DPBC::move(bool rebuild){
+    if (rebuild) {
+        cell_list_.build(positions_);
+    }
+    connections_ = cell_list_.get_conn(positions_);
+    add_alignment();
+    update_velocity();
+    add_noise();
+    add_alignment();
+    update_velocity();
+    positions_ += velocities_ * dt_;
+}
