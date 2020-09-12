@@ -1,4 +1,5 @@
 #include "vicsek.h"
+#include "spin.h"
 #include "neighbour_list.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -137,6 +138,51 @@ const char* docstring_vicsek_2d_pbc_vn =\
     ;
 
 
+const char* docstring_ism_3d =\
+    "3D Inertial spin model simulation"\
+    " with open space periodic boundary condition\n\n\n"\
+    "Args:\n\n"\
+    "   n (:obj:`int`): number of particles in the system\n"\
+    "   r (:obj:`float`): the interaction range\n"\
+    "   v0 (:obj:`float`): the speed in the simulation\n"\
+    "   T (:obj:`float`): the magnitude of noise, noted as the temperature\n"\
+    "   j (:obj:`float`): the coupling constant\n"\
+    "   m (:obj:`float`): the strength of the inertial effect like the mass\n"\
+    "   f (:obj:`float`): the friction coefficent\n"\
+    "   pre_steps (:obj:`int`): the simulation steps running without writing to the result\n"\
+    "                    typically this is the simulation steps to reach a steady state\n"\
+    "   run_steps (:obj:`int`): the simulation steps that write to the result\n"\
+    "   jump (:obj:`int`) = 1: every ``jump`` step is writting into the result\n"\
+    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n\n"\
+    "Return:\n"\
+    "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
+    " in each frame, shape (run_steps, n, 6)\n"\
+    ;
+
+
+const char* docstring_ism_3d_pbc =\
+    "3D Inertial spin model simulation"\
+    " with periodic boundary condition\n\n\n"\
+    "Args:\n\n"\
+    "   n (:obj:`int`): number of particles in the system\n"\
+    "   box (:obj:`float`): the size of the cubic box\n"\
+    "   r (:obj:`float`): the interaction range\n"\
+    "   v0 (:obj:`float`): the speed in the simulation\n"\
+    "   T (:obj:`float`): the magnitude of noise, noted as the temperature\n"\
+    "   j (:obj:`float`): the coupling constant\n"\
+    "   m (:obj:`float`): the strength of the inertial effect like the mass\n"\
+    "   f (:obj:`float`): the friction coefficent\n"\
+    "   pre_steps (:obj:`int`): the simulation steps running without writing to the result\n"\
+    "                    typically this is the simulation steps to reach a steady state\n"\
+    "   run_steps (:obj:`int`): the simulation steps that write to the result\n"\
+    "   jump (:obj:`int`) = 1: every ``jump`` step is writting into the result\n"\
+    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n\n"\
+    "Return:\n"\
+    "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
+    " in each frame, shape (run_steps, n, 6)\n"\
+    ;
+
+
 
 /*
  * get the frequency to update the neighbour list
@@ -266,6 +312,28 @@ py::array_t<double> vicsek_2d_pbc_vn(
 }
 
 
+py::array_t<double> ism_3d(
+        int n, double r, double v0,
+        double T, double j, double m, double f,
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
+        ){
+    InertialSpin3D system{n, r, v0, T, j, m, f};
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
+}
+
+
+py::array_t<double> ism_3d_pbc(
+        int n, double box, double r, double v0,
+        double T, double j, double m, double f,
+        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
+        ){
+    InertialSpin3DPBC system{n, box, r, v0, T, j, m, f};
+    int update_step = get_update_step(r, v0);
+    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
+}
+
+
 PYBIND11_MODULE(csimulate, m){
     m.doc() = "common simulations for collective behaviours";
 
@@ -307,6 +375,20 @@ PYBIND11_MODULE(csimulate, m){
     m.def(
             "vicsek_2d_pbc_vn", &vicsek_2d_pbc_vn, docstring_vicsek_2d_pbc_vn,
             py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
+            py::arg("pre_steps"), py::arg("run_steps"),
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")=""
+           );
+    m.def(
+            "ism_3d", &ism_3d, docstring_ism_3d,
+            py::arg("n"), py::arg("r"), py::arg("v0"),
+            py::arg("T"), py::arg("j"), py::arg("m"), py::arg("f"),
+            py::arg("pre_steps"), py::arg("run_steps"),
+            py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")=""
+           );
+    m.def(
+            "ism_3d_pbc", &ism_3d_pbc, docstring_ism_3d_pbc,
+            py::arg("n"), py::arg("box"), py::arg("r"), py::arg("v0"),
+            py::arg("T"), py::arg("j"), py::arg("m"), py::arg("f"),
             py::arg("pre_steps"), py::arg("run_steps"),
             py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")=""
            );

@@ -2,16 +2,17 @@
 #include "vicsek.h"
 
 int main(){
-    int jump = 100;
+    int jump = 1;
 
-    InertialSpin3D system{
-        50, 5, 0.1, 8e-2, 0.8, 1.25, 0.3
+    InertialSpin3DPBC system{
+        50, 5, 1.0, 0.1,
+        1e-4, 0.8, 1.25, 1
     };
     dump(system, "test.xyz");
 
     cout << "system created" << endl;
 
-    for (int step=0; step < 50000; step++){
+    for (int step=0; step < 500; step++){
         if (step % 20 == 0){
             system.move(true);
         }
@@ -24,7 +25,7 @@ int main(){
     cout << "movement works" << endl;
 
     load(system, "test.xyz");
-    for (int step=0; step < 50000; step++){
+    for (int step=0; step < 500; step++){
         if (step % 20 == 0){
             system.move(true);
         }

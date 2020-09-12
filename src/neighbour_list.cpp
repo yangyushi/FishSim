@@ -212,7 +212,7 @@ void VerletList3D::get_cmat_slow(Coord3D& positions, ConnMat& conn_mat){
     #pragma omp parallel for
     for (int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
-            double dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
+            double dist2 = (positions.col(i) - positions.col(j)).squaredNorm();
             if (dist2 < rc2_){
                 conn_mat(i, j) = 1;
             }

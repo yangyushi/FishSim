@@ -41,6 +41,12 @@ sim: main.cpp vicsek.o neighbour_list.o spin.o
 	time ./a.out
 	rm a.out
 
+ism: cavagna2015.cpp vicsek.o neighbour_list.o spin.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) cavagna2015.cpp vicsek.o neighbour_list.o spin.o
+	rm -f ism.xyz
+	time ./a.out
+	rm a.out
+
 test: test.cpp vicsek.o neighbour_list.o spin.o
 	$(CC) $(CPPFLAGS) test.cpp vicsek.o neighbour_list.o
 	time ./a.out
