@@ -1,5 +1,5 @@
 #include "vicsek.h"
-#include "spin.h"
+#include "network.h"
 #include "neighbour_list.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
