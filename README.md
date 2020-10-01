@@ -3,7 +3,10 @@
 This is a collection of simulation code I wrote for my PhD project in the university of Bristol.
 It is mosty written in C++ and packaged as python modules using [pybind11](https://github.com/pybind/pybind11).
 
-A twin project is the [FishPy](https://github.com/yangyushi/FishPy).
+It also has a twin project named [FishPy](https://github.com/yangyushi/FishPy).
+
+![](script/flow.svg)
+
 
 ## Dependency
 

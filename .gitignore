@@ -9,5 +9,6 @@ __pycache__
 *.prof
 *.png
 *.pdf
+README.html
 !**/.nojekyll
 !.gitignore
