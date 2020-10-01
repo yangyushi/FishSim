@@ -269,9 +269,9 @@ void Vicsek3D::move(bool rebuild){
 
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
     : Vicsek3D{n, r, eta, v0}, box_{box}, cell_list_{r, box, true} {
-        double r_box = pow(box * box * box / n, 1.0/3.0);
-        if (r_box > r){
-            int sc = floor(box / r_box / 2);
+        double L_per_particle = pow(box * box * box / n, 1.0/3.0);
+        if (L_per_particle > r){
+            int sc = floor(box / L_per_particle / 2);
             cell_list_.update_sc(sc);
         }
         positions_.setRandom(3, n);
@@ -285,6 +285,7 @@ void Vicsek3DPBC::move(bool rebuild){
     if (rebuild) {
         cell_list_.build(positions_);
     }
+    connections_.clear();
     connections_ = cell_list_.get_conn(positions_);
     align();
     normalise(velocities_);
@@ -435,9 +436,9 @@ void Vicsek3DPBCVN::move(bool rebuild){
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
     : noise_(eta), speed_(v0), box_(box), conn_mat_(n, n), n_(n),
       positions_(2, n), velocities_(2, n), cell_list_(r, box, true){
-        double r_box = pow(box * box/ n, 0.5);
-        if (r_box > r){
-            int sc = floor(box / r_box / 2);
+        double L_per_particle = pow(box * box/ n, 0.5);
+        if (L_per_particle > r){
+            int sc = floor(box / L_per_particle / 2);
             cell_list_.update_sc(sc);
         }
         positions_.setRandom(2, n);

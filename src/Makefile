@@ -1,15 +1,17 @@
 #--------------------- Clang and openmp, working with my mac  ----------------
-#CC = clang++
-#CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC\
-#		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include
-#LINKFLAGS = -lomp
+CC = clang++
+PY = python3
+prefix = $(HOME)/.local
+CPPFLAGS = -Wall -O3 -std=c++14 -I.. -I. -I$(prefix)/include -fPIC\
+		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include
+LINKFLAGS = -lomp
 #-----------------------------------------------------------------------------
 
 #---------------------- GCC and openmp, working with BlueCrystal  -----------
-CC = g++
-PY = python
-prefix = $(HOME)/.local
-CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC -fopenmp
+#CC = g++
+#PY = python
+#prefix = $(HOME)/.local
+#CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC -fopenmp
 #-----------------------------------------------------------------------------
 
 #--------------------- Clang , working with my mac  -------------------------
