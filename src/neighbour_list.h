@@ -4,24 +4,25 @@
 #include <array>
 #include <map>
 #include <Eigen/Dense>
+#include <iostream>
 
 using namespace std;
 
 using Conn = vector< vector <int> >;
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
 using ConnMat = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
-using Indices = vector< double >;  // size is n
+using Indices = vector< int >;  // size is n
 using Neighbours = vector< Indices >;
 
 using Coord3D = Eigen::Matrix<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
 using CellIndices3D = Eigen::Array<int, 3, Eigen::Dynamic, Eigen::RowMajor>; // (3, n)
-using Index3D = array<double, 3>;  // size is 3
+using Index3D = array<int, 3>;  // size is 3
 using Indices3D = vector< Index3D >;
 using Head3D = map<Index3D, int>;
 
 using Coord2D = Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::RowMajor>;  // (2, n)
-using CellIndices2D = Eigen::Array<double, 2, Eigen::Dynamic, Eigen::RowMajor>; // (2, n)
-using Index2D = array<double, 2>;  // size is 3
+using CellIndices2D = Eigen::Array<int, 2, Eigen::Dynamic, Eigen::RowMajor>; // (2, n)
+using Index2D = array<int, 2>;  // size is 3
 using Indices2D = vector< Index2D >;
 using Head2D = map<Index2D, int>;
 
@@ -69,17 +70,19 @@ class CellList3D{
      * Using cell list to accelerate distance calculation with a cutoff for 3D simulation
      */
     private:
-        double rc;
-        double box;
-        int size; // number of particles
-        int ndim = 3;
-        int sc;
-        bool pbc;
-        Indices clist;  // cell list
-        Head3D chead;  // cell head
-        Index3D head_shape;
+        double rc_;
+        double box_;
+        int size_; // number of particles
+        int ndim_ = 3;
+        int sc_;  // box is divided into sc * sc * sc cells
+        bool pbc_;
+        Indices clist_;  // cell list
+        Head3D chead_;  // cell head
+        Index3D head_shape_;
         void refill();
-        Indices3D get_neighbours_indices(Index3D cell_idx);
+        void fill_neighbour_indices_1d(Neighbours& neighbours, int cell_idx_1d);
+        Indices3D get_neighbours_indices(const Index3D& cell_idx);
+        CellIndices3D get_cell_indices(const Coord3D& positions);
 
     public:
         CellList3D(double r_cut, double box, bool pbc);
@@ -104,7 +107,7 @@ class CellList2D{
         bool pbc;
         Indices clist;  // cell list
         Head2D chead;  // cell head
-        Index2D head_shape;
+        Index2D head_shape_;
 
         void refill();
         Indices2D get_neighbours_indices(Index2D cell_idx);
