@@ -19,12 +19,33 @@ using namespace std;
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 
+
+/*
+ * calculate the vicsek alignment of velocities
+ */
+template<class T>
+void vicsek_align(T& velocities, const Conn& connections){
+    int dim = velocities.rows();
+    int n = velocities.cols();
+    T new_velocities{dim, n};
+    new_velocities.setZero();
+    for (int i = 0; i < n; i++){
+        for (auto j : connections[i]){
+            new_velocities.col(i) += velocities.col(j);
+        }
+    }
+    velocities = new_velocities;
+}
+
+
 class Vicsek3D{
     protected:
         double noise_;
         double speed_;
         Conn connections_;
-        void align();
+        void align(){
+            vicsek_align(velocities_, connections_);
+        }
         void add_noise();
         void rotate_noise(Coord3D& noise_xyz);
         void rotate_noise_xyz(Coord3D& noise_xyz);
@@ -100,11 +121,10 @@ class Vicsek2D{
         double noise_;
         double speed_;
         Conn connections_;
-        void align();
+        void align(){
+            vicsek_align(velocities_, connections_);
+        }
         void add_noise();
-        void rotate_noise(Coord3D& noise_xyz);
-        void rotate_noise_fast(Coord3D& noise_xyz);
-        void rotate_noise_xyz(Coord3D& noise_xyz);
         VerletList<Coord2D> verlet_list_;
 
     public:

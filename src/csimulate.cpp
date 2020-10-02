@@ -9,9 +9,8 @@
 namespace py = pybind11;
 
 
-const char* docstring_vicsek_3d_pbc =\
-    "3D Vicsek simulation with scarlar (intrinsic) noise"\
-    " and periodic boundary condition\n\n\n"\
+const char* docstring_vicsek_2d =\
+    "2D Vicsek simulation with scarlar (intrinsic) noise"\
     "Args:\n\n"\
     "   n (:obj:`int`): number of particles in the system\n"\
     "   box (:obj:`float`): the size of the cubic box\n"\
@@ -26,6 +25,27 @@ const char* docstring_vicsek_3d_pbc =\
     "Return:\n"\
     "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
     " in each frame, shape (run_steps, n, 6)\n"\
+    ;
+
+
+const char* docstring_vicsek_2d_pbc =\
+    "2D Vicsek simulation with scarlar (intrinsic) noise"\
+    " and periodic boundary condition"\
+    "\n\n\n"\
+    "Args:\n\n"\
+    "   n (:obj:`int`): number of particles in the system\n"\
+    "   box (:obj:`float`): the size of the cubic box\n"\
+    "   eta (:obj:`float`): the magnitude of noise, from 0 to 1\n"\
+    "   v0 (:obj:`float`): the speed in the simulation\n"\
+    "   r (:obj:`float`): the interaction range\n"\
+    "   pre_steps (:obj:`int`): the simulation steps running without writing to the result\n"\
+    "                    typically this is the simulation steps to reach a steady state\n"\
+    "   run_steps (:obj:`int`): the simulation steps that write to the result\n"\
+    "   jump (:obj:`int`) = 1: every ``jump`` step is writting into the result\n"\
+    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n\n"\
+    "Return:\n"\
+    "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
+    " in each frame, shape (run_steps, n, 4)\n"\
     ;
 
 
@@ -46,6 +66,27 @@ const char* docstring_vicsek_3d =\
     "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
     " in each frame, shape (run_steps, n, 6)\n"\
     ;
+
+
+const char* docstring_vicsek_3d_pbc =\
+    "3D Vicsek simulation with scarlar (intrinsic) noise"\
+    " and periodic boundary condition\n\n\n"\
+    "Args:\n\n"\
+    "   n (:obj:`int`): number of particles in the system\n"\
+    "   box (:obj:`float`): the size of the cubic box\n"\
+    "   eta (:obj:`float`): the magnitude of noise, from 0 to 1\n"\
+    "   v0 (:obj:`float`): the speed in the simulation\n"\
+    "   r (:obj:`float`): the interaction range\n"\
+    "   pre_steps (:obj:`int`): the simulation steps running without writing to the result\n"\
+    "                    typically this is the simulation steps to reach a steady state\n"\
+    "   run_steps (:obj:`int`): the simulation steps that write to the result\n"\
+    "   jump (:obj:`int`) = 1: every ``jump`` step is writting into the result\n"\
+    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n\n"\
+    "Return:\n"\
+    "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
+    " in each frame, shape (run_steps, n, 6)\n"\
+    ;
+
 
 
 const char* docstring_attanasi2014pcb =\
@@ -112,27 +153,6 @@ const char* docstring_vicsek_3d_pbc_inertia_af =\
     "Return:\n"\
     "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
     " in each frame, shape (run_steps, n, 6)\n"\
-    ;
-
-
-const char* docstring_vicsek_2d_pbc =\
-    "2D Vicsek simulation with scarlar (intrinsic) noise"\
-    " and periodic boundary condition"\
-    "\n\n\n"\
-    "Args:\n\n"\
-    "   n (:obj:`int`): number of particles in the system\n"\
-    "   box (:obj:`float`): the size of the cubic box\n"\
-    "   eta (:obj:`float`): the magnitude of noise, from 0 to 1\n"\
-    "   v0 (:obj:`float`): the speed in the simulation\n"\
-    "   r (:obj:`float`): the interaction range\n"\
-    "   pre_steps (:obj:`int`): the simulation steps running without writing to the result\n"\
-    "                    typically this is the simulation steps to reach a steady state\n"\
-    "   run_steps (:obj:`int`): the simulation steps that write to the result\n"\
-    "   jump (:obj:`int`) = 1: every ``jump`` step is writting into the result\n"\
-    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n\n"\
-    "Return:\n"\
-    "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
-    " in each frame, shape (run_steps, n, 4)\n"\
     ;
 
 
@@ -361,6 +381,32 @@ py::array_t<double> continue_vicsek_3d(
 }
 
 
+py::array_t<double> vicsek_2d(
+        int n, double eta, double v0, double r,
+        int pre_steps, int run_steps, int jump=1,
+        string load_file="", string dump_file=""
+        ){
+    Vicsek2D system{n, r, eta, v0};
+    int update_step = get_update_step(r, v0);
+    return simulate(
+        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+        );
+}
+
+
+py::array_t<double> continue_vicsek_2d(
+        int n, double eta, double v0, double r,
+        int run_steps, Coord2D positions, Coord2D velocities, int jump=1
+        ){
+    Vicsek2D system{n, r, eta, v0};
+    system.positions_ = positions;
+    system.velocities_ = velocities;
+    int update_step = get_update_step(r, v0);
+    return run(system, update_step, run_steps, jump);
+}
+
+
+
 py::array_t<double> vicsek_3d_pbc_inertia(
         int n, double box, double eta, double v0, double r, double alpha,
         int pre_steps, int run_steps, int jump=1,
@@ -506,6 +552,21 @@ PYBIND11_MODULE(csimulate, m){
     m.def(
         "continue_vicsek_3d",
         &continue_vicsek_3d, docstring_vicsek_3d,
+        py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("r"),
+        py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
+        py::arg("jump")=1
+    );
+
+    m.def(
+        "vicsek_2d", &vicsek_2d, docstring_vicsek_2d,
+        py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("r"),
+        py::arg("pre_steps"), py::arg("run_steps"),
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+    );
+
+    m.def(
+        "continue_vicsek_2d",
+        &continue_vicsek_2d, docstring_vicsek_2d,
         py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
         py::arg("jump")=1

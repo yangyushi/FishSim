@@ -116,18 +116,6 @@ Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
     }
 
 
-void Vicsek3D::align(){
-    Coord3D new_velocities{3, n_};
-    new_velocities.setZero();
-    for (int i = 0; i < n_; i++){
-        for (auto j : connections_[i]){
-            new_velocities.col(i) += velocities_.col(j);
-        }
-    }
-    velocities_ = new_velocities;
-}
-
-
 void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
     /*
     * Rotate nosie pointing at (0, 0, 1) to direction xyz 
@@ -430,6 +418,46 @@ void Vicsek3DPBCVN::move(bool rebuild){
     positions_ += velocities_;
 
     fix_positions();
+}
+
+
+Vicsek2D::Vicsek2D(int n, double r, double eta, double v0)
+    : noise_(eta), speed_(v0), verlet_list_(r, r + v0), n_(n),
+      positions_(2, n), velocities_(2, n) {
+          positions_.setRandom();
+          Property vr{n}, vphi{n};
+          vr.setConstant(speed_);
+          vphi.setRandom();
+          vphi *= PI;  // vphi ~ U(-pi, pi)
+          velocities_.row(0) << vr * cos(vphi);
+          velocities_.row(1) << vr * sin(vphi);
+    }
+
+
+void Vicsek2D::add_noise(){
+    Property noise_phi{1, n_};
+    Property phi = xy_to_phi(velocities_);
+
+    noise_phi.setRandom(); // ~ U(-1, 1)
+    noise_phi *= PI * noise_; // phi ~ U(-PI * eta, PI * eta)
+    phi += noise_phi;
+
+    velocities_.row(0) = speed_ * cos(phi);
+    velocities_.row(1) = speed_ * sin(phi);
+}
+
+
+void Vicsek2D::move(bool rebuild){
+    if (rebuild) verlet_list_.build(positions_);
+    connections_ = verlet_list_.get_conn(positions_);
+
+    align();
+    normalise(velocities_);  // speed = 1
+    add_noise();  // speed = speed
+
+    for (int d = 0; d < 2; d++){
+        positions_.row(d) += velocities_.row(d);
+    }
 }
 
 
