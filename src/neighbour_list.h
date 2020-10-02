@@ -1,10 +1,10 @@
 #ifndef NEIGHBOUR_LIST
 #define NEIGHBOUR_LIST
-#include <vector>
-#include <array>
 #include <map>
-#include <Eigen/Dense>
+#include <array>
+#include <vector>
 #include <iostream>
+#include <Eigen/Dense>
 
 using namespace std;
 
@@ -41,9 +41,11 @@ Indices2D product_2d(Indices& arr);
 Indices2D product_2d(Indices& arr_1, Indices& arr_2);
 
 
-class VerletList3D{
+template<class T>
+class VerletList{
     /*
-     * Using the Verlet list to accelerate distance calculation with a cutoff for 3D simulation
+     * Using the Verlet list to accelerate distance calculation with a
+     * cutoff for 3D simulation
      * This is suitable for accelerating the simulation without a box
      */
     private:
@@ -53,16 +55,143 @@ class VerletList3D{
         double rl2_;
         vector<int> nlist_;
         vector<int> point_;
-        int point_size_ = 0;
-        int size_;
+        int point_size_ = 0;  // particle number + 1, point_.size()
+        int size_ = 0;  // particle number
+        Conn get_blank_connections(){
+            Conn connections{};
+            for (int i = 0; i < size_; i++){
+                connections.push_back(vector<int>{});
+            }
+            return connections;
+        }
+
     public:
-        VerletList3D(double r_cut, double r_skin);
-        void build(Coord3D& positoins);
-        void get_dmat(Coord3D& positoins, DistMat& dist_mat);
-        void get_cmat(Coord3D& positoins, ConnMat& conn_mat);
-        void get_cmat_slow(Coord3D& positoins, ConnMat& conn_mat);
-        Conn get_conn(Coord3D& positions);
+        VerletList(double r_cut, double r_skin);
+        void build(const T& positoins);
+        void get_dmat(const T& positoins, DistMat& dist_mat);
+        void get_cmat(const T& positoins, ConnMat& conn_mat);
+        void get_cmat_slow(const T& positoins, ConnMat& conn_mat);
+        Conn get_conn(const T& positions);
+        Conn get_conn_slow(const T& positions);
 };
+
+
+template<class T>
+VerletList<T>::VerletList(double r_cut, double r_skin)
+    : rc_{r_cut}, rl_{r_skin} {
+        rl2_ = rl_ * rl_;
+        rc2_ = rc_ * rc_;
+}
+
+
+template<class T>
+void VerletList<T>::build(const T& positions){
+    double d2{0};
+    size_ = positions.cols();
+    point_.clear();
+    nlist_.clear();
+
+    point_.push_back(0);
+    for (int i = 0; i < size_; i++){
+        for (int j = 0; j < size_; j++){
+            d2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
+            if (d2 < rl2_){
+                nlist_.push_back(j);
+            }
+        }
+        point_.push_back(nlist_.size());
+    }
+    point_size_ = point_.size(); // particle number + 1
+}
+
+
+template<class T>
+void VerletList<T>::get_dmat(const T& positions, DistMat& dist_mat){
+    dist_mat.setConstant(-1);
+    #pragma omp parallel for
+    for (int i = 0; i < point_size_ - 1; i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i+1]; j++){
+            idx_j = nlist_[j];
+            dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
+            if (dist2 < rc2_){
+                dist_mat(i, idx_j) = sqrt(dist2);
+            }
+        }
+    }
+}
+
+
+template<class T>
+void VerletList<T>::get_cmat(const T& positions, ConnMat& conn_mat){
+    conn_mat.setZero();
+    #pragma omp parallel for
+    for (int i = 0; i < point_size_ - 1; i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i + 1]; j++){
+            idx_j = nlist_[j];
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
+            if (dist2 < rc2_){
+                conn_mat(i, idx_j) = 1;
+            }
+        }
+    }
+}
+
+
+template<class T>
+void VerletList<T>::get_cmat_slow(const T& positions, ConnMat& conn_mat){
+    conn_mat.setZero();
+    #pragma omp parallel for
+    for (int i = 0; i < size_; i++){
+        for (int j = 0; j < size_; j++){
+            double dist2 = (positions.col(i) - positions.col(j)).squaredNorm();
+            if (dist2 < rc2_){
+                conn_mat(i, j) = 1;
+            }
+        }
+    }
+}
+
+
+template<class T>
+Conn VerletList<T>::get_conn(const T& positions){
+    Conn connections = get_blank_connections();
+    #pragma omp parallel for
+    for (int i = 0; i < point_size_ - 1; i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i + 1]; j++){
+            idx_j = nlist_[j];
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
+            if (dist2 < rc2_){
+                connections[i].push_back(idx_j);
+            }
+        }
+    }
+    return connections;
+}
+
+
+template<class T>
+Conn VerletList<T>::get_conn_slow(const T& positions){
+    Conn connections = get_blank_connections();
+    #pragma omp parallel for
+    for (int i = 0; i < size_; i++){
+        for (int j = 0; j < size_; j++){
+            double dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
+            if (dist2 < rc2_){
+                connections[i].push_back(j);
+            }
+        }
+    }
+    return connections;
+}
 
 
 class CellList3D{
