@@ -101,7 +101,7 @@ void normalise(Coord2D& xy, double spd){
 
 
 Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
-    : noise_(eta), speed_(v0), verlet_list_(r, r + v0), n_(n),
+    : noise_(eta), speed_(v0), rc_(r), verlet_list_(r, r + v0), n_(n),
     positions_(3, n), velocities_(3, n) {
         positions_.setRandom(3, n);
         Property vz{n}, vphi{n}, vrxy{n};
@@ -242,15 +242,19 @@ void Vicsek3D::add_noise(){
 
 void Vicsek3D::move(bool rebuild){
     if (rebuild) verlet_list_.build(positions_);
-
     connections_ = verlet_list_.get_conn(positions_);
-
     align();
-
     normalise(velocities_);
-
     add_noise();
+    positions_ += velocities_;
+}
 
+
+void Vicsek3D::move(){
+    connections_ = get_connections(positions_, rc_);
+    align();
+    normalise(velocities_);
+    add_noise();
     positions_ += velocities_;
 }
 
@@ -283,8 +287,20 @@ void Vicsek3DPBC::move(bool rebuild){
 }
 
 
-Vicsek3DPBCInertia::Vicsek3DPBCInertia(int n, double r, double eta, double box, double v0, double alpha)
-    : Vicsek3DPBC{n, r, eta, box, v0}, alpha_{alpha}, old_velocities_{3, n} {}
+void Vicsek3DPBC::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    align();
+    normalise(velocities_);
+    add_noise();
+    positions_ += velocities_;
+    fix_positions();
+}
+
+
+Vicsek3DPBCInertia::Vicsek3DPBCInertia(
+    int n, double r, double eta, double box, double v0, double alpha
+    ) : Vicsek3DPBC{n, r, eta, box, v0}, alpha_{alpha}, old_velocities_{3, n}
+    {}
 
 
 void Vicsek3DPBCInertia::move(bool rebuild){
@@ -303,8 +319,9 @@ void Vicsek3DPBCInertia::move(bool rebuild){
 }
 
 
-Vicsek3DPBCInertiaAF::Vicsek3DPBCInertiaAF(int n, double r, double eta, double box, double v0, double alpha)
-    : Vicsek3DPBCInertia{n, r, eta, box, v0, alpha} {}
+Vicsek3DPBCInertiaAF::Vicsek3DPBCInertiaAF(
+    int n, double r, double eta, double box, double v0, double alpha
+    ) : Vicsek3DPBCInertia{n, r, eta, box, v0, alpha} {}
 
 
 void Vicsek3DPBCInertiaAF::align_af(){
@@ -339,8 +356,9 @@ void Vicsek3DPBCInertiaAF::move(bool rebuild){
 }
 
 
-Attanasi2014PCB::Attanasi2014PCB(int n, double r, double eta, double v0, double beta)
-    : Vicsek3D{n, r, eta, v0}, beta_{beta} {}
+Attanasi2014PCB::Attanasi2014PCB(
+    int n, double r, double eta, double v0, double beta
+    ) : Vicsek3D{n, r, eta, v0}, beta_{beta} {}
 
 
 void Attanasi2014PCB::harmonic_align(){
@@ -422,7 +440,7 @@ void Vicsek3DPBCVN::move(bool rebuild){
 
 
 Vicsek2D::Vicsek2D(int n, double r, double eta, double v0)
-    : noise_(eta), speed_(v0), verlet_list_(r, r + v0), n_(n),
+    : noise_(eta), speed_(v0), rc_(r), verlet_list_(r, r + v0), n_(n),
       positions_(2, n), velocities_(2, n) {
           positions_.setRandom();
           Property vr{n}, vphi{n};
@@ -450,14 +468,19 @@ void Vicsek2D::add_noise(){
 void Vicsek2D::move(bool rebuild){
     if (rebuild) verlet_list_.build(positions_);
     connections_ = verlet_list_.get_conn(positions_);
-
     align();
     normalise(velocities_);  // speed = 1
     add_noise();  // speed = speed
+    positions_ += velocities_;
+}
+ 
 
-    for (int d = 0; d < 2; d++){
-        positions_.row(d) += velocities_.row(d);
-    }
+void Vicsek2D::move(){
+    connections_ = get_connections(positions_, rc_);
+    align();
+    normalise(velocities_);
+    add_noise();
+    positions_ += velocities_;
 }
 
 

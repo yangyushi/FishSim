@@ -42,6 +42,7 @@ class Vicsek3D{
     protected:
         double noise_;
         double speed_;
+        double rc_;
         Conn connections_;
         void align(){
             vicsek_align(velocities_, connections_);
@@ -59,6 +60,7 @@ class Vicsek3D{
 
         Vicsek3D(int n, double r, double eta, double v0);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -73,6 +75,7 @@ class Vicsek3DPBC : public Vicsek3D{
     public:
         Vicsek3DPBC(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -83,6 +86,7 @@ class Attanasi2014PCB : public Vicsek3D{
     public:
         Attanasi2014PCB(int n, double r, double eta, double v0, double beta);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -92,6 +96,7 @@ class Vicsek3DPBCVN : public Vicsek3DPBC{
     public:
         Vicsek3DPBCVN(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -101,6 +106,7 @@ class Vicsek3DPBCInertia : public Vicsek3DPBC{
         Coord3D old_velocities_;
         Vicsek3DPBCInertia(int n, double r, double eta, double box, double v0, double alpha);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -113,6 +119,7 @@ class Vicsek3DPBCInertiaAF : public Vicsek3DPBCInertia{
     public:
         Vicsek3DPBCInertiaAF(int n, double r, double eta, double box, double v0, double alpha);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -120,6 +127,7 @@ class Vicsek2D{
     protected:
         double noise_;
         double speed_;
+        double rc_;
         Conn connections_;
         void align(){
             vicsek_align(velocities_, connections_);
@@ -133,6 +141,7 @@ class Vicsek2D{
         Coord2D velocities_;
         Vicsek2D(int n, double r, double eta, double v0);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -157,8 +166,9 @@ class Vicsek2DPBC{
         CellList2D cell_list_;
 
         Vicsek2DPBC(int n, double r, double eta, double box, double v0);
-        void move(bool rebuild);
         Vec2D get_shift(Vec2D p1, Vec2D p2);
+        void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -168,6 +178,7 @@ class Vicsek2DPBCVN : public Vicsek2DPBC{
     public:
         Vicsek2DPBCVN(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -188,6 +199,7 @@ class Vicsek2DPBCVNCO : public Vicsek2DPBC{
         // default cohesion parameter
         Vicsek2DPBCVNCO(int n, double r, double eta, double box, double v0);  
         void move(bool rebuild);
+        void move();  // without neighbour list
 };
 
 
@@ -408,5 +420,54 @@ Conn get_topology_connections(T positions, int nc){
     }
     return connections;
 }
+
+
+/*
+ * get the neighbours within a metric range
+ */
+template<class T>
+Conn get_connections(T& positions, double rc){
+    Conn connections;
+    double rc2 = rc * rc;
+    for (int i=0; i<positions.cols(); i++){
+        connections.push_back(vector<int>{});
+        for (int j=0; j<positions.cols(); j++){
+            if ((positions.col(i) - positions.col(j)).squaredNorm() <= rc2){
+                connections[i].push_back(j);
+            };
+        }
+    }
+    return connections;
+}
+
+
+/*
+ * get the neighbours within a metric range in a cubic PBC box
+ */
+template<class T>
+Conn get_connections_pbc(T& positions, double rc, double box){
+    Conn connections;
+    double rc2 = rc * rc;
+    double half_box_2 = box * box / 4;
+    for (int i=0; i<positions.cols(); i++){
+        connections.push_back(vector<int>{});
+        for (int j=0; j<positions.cols(); j++){
+            double dist_nd_2 = 0;
+            for (auto shift_1d : (positions.col(i) - positions.col(j))){
+                double dist_1d = abs(shift_1d);
+                if (dist_1d > half_box_2){
+                    dist_nd_2 += pow(box - dist_1d, 2);
+                } else {
+                    dist_nd_2 += pow(dist_1d, 2);
+                }
+            }
+            if (dist_nd_2 <= rc2){
+                connections[i].push_back(j);
+            };
+        }
+    }
+    return connections;
+}
+
 
 #endif
