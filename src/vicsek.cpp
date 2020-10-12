@@ -64,42 +64,6 @@ Coord2D phi_to_xy(Property& phi, double spd){
 }
 
 
-void normalise(Coord3D& xyz){
-    int i = 0;
-    for (auto L : xyz.colwise().norm()){
-        xyz.col(i) /= L;
-        i++;
-    }
-}
-
-
-void normalise(Coord3D& xyz, double spd){
-    int i = 0;
-    for (auto L : xyz.colwise().norm()){
-        xyz.col(i) = xyz.col(i) / L * spd;
-        i++;
-    }
-}
-
-
-void normalise(Coord2D& xy){
-    int i = 0;
-    for (auto L : xy.colwise().norm()){
-        xy.col(i) /= L;
-        i++;
-    }
-}
-
-
-void normalise(Coord2D& xy, double spd){
-    int i = 0;
-    for (auto L : xy.colwise().norm()){
-        xy.col(i) = xy.col(i) / L * spd;
-        i++;
-    }
-}
-
-
 Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
     : noise_(eta), speed_(v0), rc_(r), verlet_list_(r, r + v0), n_(n),
     positions_(3, n), velocities_(3, n) {
@@ -243,7 +207,7 @@ void Vicsek3D::add_noise(){
 void Vicsek3D::move(bool rebuild){
     if (rebuild) verlet_list_.build(positions_);
     connections_ = verlet_list_.get_conn(positions_);
-    align();
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);
     add_noise();
     positions_ += velocities_;
@@ -252,7 +216,7 @@ void Vicsek3D::move(bool rebuild){
 
 void Vicsek3D::move(){
     connections_ = get_connections(positions_, rc_);
-    align();
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);
     add_noise();
     positions_ += velocities_;
@@ -279,7 +243,7 @@ void Vicsek3DPBC::move(bool rebuild){
     }
     connections_.clear();
     connections_ = cell_list_.get_conn(positions_);
-    align();
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);
     add_noise();
     positions_ += velocities_;
@@ -289,7 +253,7 @@ void Vicsek3DPBC::move(bool rebuild){
 
 void Vicsek3DPBC::move(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
-    align();
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);
     add_noise();
     positions_ += velocities_;
@@ -309,7 +273,20 @@ void Vicsek3DPBCInertia::move(bool rebuild){
     }
     connections_ = cell_list_.get_conn(positions_);
     old_velocities_ << velocities_;
-    align();
+    vicsek_align(velocities_, connections_);
+    normalise(velocities_);
+    add_noise();
+    velocities_ = (old_velocities_ * alpha_ + velocities_ * (1 - alpha_));
+    normalise(velocities_, speed_);
+    positions_ += velocities_;
+    fix_positions();
+}
+
+
+void Vicsek3DPBCInertia::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    old_velocities_ << velocities_;
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);
     add_noise();
     velocities_ = (old_velocities_ * alpha_ + velocities_ * (1 - alpha_));
@@ -356,6 +333,19 @@ void Vicsek3DPBCInertiaAF::move(bool rebuild){
 }
 
 
+void Vicsek3DPBCInertiaAF::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    old_velocities_ << velocities_;
+    align_af();
+    normalise(velocities_);
+    add_noise();
+    velocities_ = (old_velocities_ * alpha_ + velocities_ * (1 - alpha_));
+    normalise(velocities_, speed_);
+    positions_ += velocities_;
+    fix_positions();
+}
+
+
 Attanasi2014PCB::Attanasi2014PCB(
     int n, double r, double eta, double v0, double beta
     ) : Vicsek3D{n, r, eta, v0}, beta_{beta} {}
@@ -376,65 +366,41 @@ void Attanasi2014PCB::harmonic_align(){
 
 void Attanasi2014PCB::move(bool rebuild){
     if (rebuild) verlet_list_.build(positions_);
-
     connections_ = verlet_list_.get_conn(positions_);
-
     harmonic_align();
-
     normalise(velocities_);
-
     add_noise();
-
     positions_ += velocities_;
 }
 
 
-Vicsek3DPBCVN::Vicsek3DPBCVN(int n, double r, double eta, double box, double v0)
-    : Vicsek3DPBC(n, r, eta, box, v0) {}
-
-
-void Vicsek3DPBCVN::noisy_align(){
-    /*
-     * See ginellEPJ2016 for equations
-     */
-    Property noise_phi{1, n_};
-    Property noise_theta{1, n_};
-    PropertyInt neighbour_nums{1, n_};
-
-    Coord3D noise_xyz{3, n_};
-    Coord3D new_velocities{3, n_};
-    Vec3D v_align;
-
-    noise_phi.setRandom();   noise_phi   = (noise_phi + 1) * PI; // phi ~ U(0, 2PI)
-    noise_theta.setRandom(); noise_theta = asin(noise_theta);    // theta ~ U(0, PI)
-
-    noise_xyz.row(0) = cos(noise_theta) * cos(noise_phi) * speed_ * noise_; // -> eta * xi_i^t
-    noise_xyz.row(1) = cos(noise_theta) * sin(noise_phi) * speed_ * noise_;
-    noise_xyz.row(2) = sin(noise_theta) * speed_ * noise_;
-
-    for (int i = 0; i < n_; i++){
-        v_align << 0, 0, 0;
-
-        for (auto j : connections_[i]){  // \sum n_ij^t s_j^t
-            v_align += velocities_.col(j);
-        }
-        new_velocities.col(i) = v_align + noise_xyz.col(i) * connections_[i].size();
-    }
-
-    normalise(new_velocities, speed_);
-    velocities_ = new_velocities;
+void Attanasi2014PCB::move(){
+    connections_ = get_connections(positions_, rc_);
+    harmonic_align();
+    normalise(velocities_);
+    add_noise();
+    positions_ += velocities_;
 }
+
+
+Vicsek3DPBCVN::Vicsek3DPBCVN(
+        int n, double r, double eta, double box, double v0
+    ) : Vicsek3DPBC(n, r, eta, box, v0) {}
 
 
 void Vicsek3DPBCVN::move(bool rebuild){
     if (rebuild) cell_list_.build(positions_);
-
     connections_ = cell_list_.get_conn(positions_);
-
-    noisy_align();
-
+    vicsek_align_vn(velocities_, connections_, noise_);
     positions_ += velocities_;
+    fix_positions();
+}
 
+
+void Vicsek3DPBCVN::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    vicsek_align_vn(velocities_, connections_, noise_);
+    positions_ += velocities_;
     fix_positions();
 }
 
@@ -455,11 +421,9 @@ Vicsek2D::Vicsek2D(int n, double r, double eta, double v0)
 void Vicsek2D::add_noise(){
     Property noise_phi{1, n_};
     Property phi = xy_to_phi(velocities_);
-
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= PI * noise_; // phi ~ U(-PI * eta, PI * eta)
     phi += noise_phi;
-
     velocities_.row(0) = speed_ * cos(phi);
     velocities_.row(1) = speed_ * sin(phi);
 }
@@ -468,7 +432,7 @@ void Vicsek2D::add_noise(){
 void Vicsek2D::move(bool rebuild){
     if (rebuild) verlet_list_.build(positions_);
     connections_ = verlet_list_.get_conn(positions_);
-    align();
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);  // speed = 1
     add_noise();  // speed = speed
     positions_ += velocities_;
@@ -477,7 +441,7 @@ void Vicsek2D::move(bool rebuild){
 
 void Vicsek2D::move(){
     connections_ = get_connections(positions_, rc_);
-    align();
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);
     add_noise();
     positions_ += velocities_;
@@ -485,8 +449,7 @@ void Vicsek2D::move(){
 
 
 Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
-    : noise_(eta), speed_(v0), box_(box), conn_mat_(n, n), n_(n),
-      positions_(2, n), velocities_(2, n), cell_list_(r, box, true){
+    : Vicsek2D{n, r, eta, v0}, box_(box), cell_list_(r, box, true){
         double L_per_particle = pow(box * box/ n, 0.5);
         if (L_per_particle > r){
             int sc = floor(box / L_per_particle / 2);
@@ -499,49 +462,23 @@ Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
     }
 
 
-void Vicsek2DPBC::align(){
-    Coord2D new_velocities{2, n_};
-    Vec2D v_align;
-
-    for (int i = 0; i < n_; i++){
-        v_align << 0, 0;
-
-        for (int j = 0; j < conn_mat_.rows(); j++){
-            if (conn_mat_(i, j) > 0){
-                v_align += velocities_.col(j);
-            }
-        }
-        new_velocities.col(i) << v_align;
-    }
-
-    velocities_ = new_velocities;
-}
-
-
-void Vicsek2DPBC::add_noise(){
-    Property noise_phi{1, n_};
-    Property phi = xy_to_phi(velocities_);
-
-    noise_phi.setRandom(); // ~ U(-1, 1)
-    noise_phi *= PI * noise_; // phi ~ U(-PI * eta, PI * eta)
-    phi += noise_phi;
-
-    velocities_.row(0) = speed_ * cos(phi);
-    velocities_.row(1) = speed_ * sin(phi);
-}
-
-
 void Vicsek2DPBC::move(bool rebuild){
     if (rebuild) cell_list_.build(positions_);
-    cell_list_.get_cmat(positions_, conn_mat_);
-
-    align();
+    connections_ = cell_list_.get_conn(positions_);
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);  // speed = 1
     add_noise();  // speed = speed
+    positions_ += velocities_;
+    fix_positions();
+}
 
-    for (int d = 0; d < 2; d++){
-        positions_.row(d) += velocities_.row(d);
-    }
+
+void Vicsek2DPBC::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    vicsek_align(velocities_, connections_);
+    normalise(velocities_);
+    add_noise();
+    positions_ += velocities_;
     fix_positions();
 }
 
@@ -549,7 +486,6 @@ void Vicsek2DPBC::move(bool rebuild){
 Vec2D Vicsek2DPBC::get_shift(Vec2D p1, Vec2D p2){
     double shift_1d{0};
     Vec2D shift;
-
     for (int d = 0; d < 2; d++){
         shift_1d = p1(d) - p2(d);
         if (abs(shift_1d) > box_ / 2){
@@ -570,47 +506,21 @@ Vicsek2DPBCVN::Vicsek2DPBCVN(int n, double r, double eta, double box, double v0)
     : Vicsek2DPBC(n, r, eta, box, v0) {}
 
 
-void Vicsek2DPBCVN::noisy_align(){
-    /*
-     * See ginellEPJ2016 for equations
-     */
-    Property noise_phi{1, n_};
-    Coord2D noise_xy{2, n_};
-    PropertyInt neighbour_nums{1, n_};
-    Coord2D new_velocities{2, n_};
-    Vec2D v_align;
-
-    neighbour_nums = conn_mat_.colwise().sum(); // -> m_i
-
-    noise_phi.setRandom(); // ~ U(-1, 1)
-    noise_phi *= PI; // phi ~ U(-PI, PI)
-
-    noise_xy.row(0) = cos(noise_phi) * speed_ * noise_; // -> eta * xi_i^t
-    noise_xy.row(1) = sin(noise_phi) * speed_ * noise_;
-
-    for (int i = 0; i < n_; i++){
-        v_align << 0, 0;
-
-        for (int j = 0; j < conn_mat_.cols(); j++){  // \sum n_ij^t s_j^t
-            if (conn_mat_(i, j) > 0){
-                v_align += velocities_.col(j);
-            }
-        }
-        new_velocities.col(i) = v_align + noise_xy.col(i) * neighbour_nums(0, i);
-    }
-
-    normalise(new_velocities, speed_);
-    velocities_ = new_velocities;
+void Vicsek2DPBCVN::move(bool rebuild){
+    if (rebuild) cell_list_.build(positions_);
+    connections_ = cell_list_.get_conn(positions_);
+    vicsek_align_vn(velocities_, connections_, noise_);
+    normalise(velocities_, speed_);
+    positions_ += velocities_;
+    fix_positions();
 }
 
 
-void Vicsek2DPBCVN::move(bool rebuild){
-    if (rebuild) cell_list_.build(positions_);
-
-    cell_list_.get_cmat(positions_, conn_mat_);
-    noisy_align();
-
-    for (int d = 0; d < 2; d++){ positions_.row(d) += velocities_.row(d); }
+void Vicsek2DPBCVN::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    vicsek_align_vn(velocities_, connections_, noise_);
+    normalise(velocities_, speed_);
+    positions_ += velocities_;
     fix_positions();
 }
 
@@ -640,7 +550,6 @@ void Vicsek2DPBCVNCO::update_velocity(){
      */
     Property noise_phi{1, n_};
     Coord2D noise_xy{2, n_};
-    PropertyInt neighbour_nums{1, n_};
     Coord2D new_velocities{2, n_};
     new_velocities.setZero();
     Vec2D shift;
@@ -649,8 +558,6 @@ void Vicsek2DPBCVNCO::update_velocity(){
     double dij{0};
     double n_avoid{0};
     double a = alpha_ / speed_;
-
-    neighbour_nums = conn_mat_.colwise().sum(); // -> m_i
 
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= PI; // phi ~ U(-PI, PI)
@@ -662,32 +569,29 @@ void Vicsek2DPBCVNCO::update_velocity(){
         v_force << 0, 0;
         v_avoid << 0, 0;
         n_avoid = 0;
-        for (int j = 0; j < n_; j++){  // \sum n_ij^t s_j^t
-            if (conn_mat_(i, j) > 0){
-                if (i == j){
-                    v_force += a * velocities_.col(j);
+        for (auto j : connections_[i]){
+            if (i == j){
+                v_force += a * velocities_.col(j);
+            } else {
+                shift = get_shift(positions_.col(j), positions_.col(i));
+                dij = shift.matrix().norm();
+                shift /= dij;
+                if (dij < rc_) {
+                    n_avoid += 1;  // fij = infty
+                    v_avoid += shift * -1;
+                } else if (dij < ra_) {
+                    v_force += a * velocities_.col(j) + beta_ * shift * c_ * (dij - re_);
                 } else {
-                    shift = get_shift(positions_.col(j), positions_.col(i));
-                    dij = shift.matrix().norm();
-                    shift /= dij;
-                    if (dij < rc_) {
-                        n_avoid += 1;  // fij = infty
-                        v_avoid += shift * -1;
-                    } else if (dij < ra_) {
-                        v_force += a * velocities_.col(j) + beta_ * shift * c_ * (dij - re_);
-                    } else {
-                        v_force += a * velocities_.col(j) + beta_ * shift;  // fij = 1
-                    }
+                    v_force += a * velocities_.col(j) + beta_ * shift;  // fij = 1
                 }
             }
         }
         if (n_avoid > 0){
             new_velocities.col(i) = v_avoid;
         } else {
-            new_velocities.col(i) = v_force + noise_xy.col(i) * neighbour_nums(0, i);
+            new_velocities.col(i) = v_force + noise_xy.col(i) * connections_[i].size();
         }
     }
-
     normalise(new_velocities, speed_);
     velocities_ = new_velocities;
 }
@@ -695,13 +599,17 @@ void Vicsek2DPBCVNCO::update_velocity(){
 
 void Vicsek2DPBCVNCO::move(bool rebuild){
     if (rebuild) cell_list_.build(positions_);
-
-    cell_list_.get_cmat(positions_, conn_mat_);
+    connections_ = cell_list_.get_conn(positions_);
     update_velocity();
+    positions_ += velocities_;
+    fix_positions();
+}
 
-    for (int d = 0; d < 2; d++){
-        positions_.row(d) += velocities_.row(d);
-    }
+
+void Vicsek2DPBCVNCO::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    update_velocity();
+    positions_ += velocities_;
     fix_positions();
 }
 
@@ -709,7 +617,7 @@ void Vicsek2DPBCVNCO::move(bool rebuild){
 InertialSpin3D::InertialSpin3D(
         int n, double r, double v0, double T, double j, double m, double f
         )
-    :mass_{m}, friction_{f}, T_{T}, J_{j}, verlet_list_{r, r + v0},
+    :mass_{m}, friction_{f}, T_{T}, J_{j}, rc_{r}, verlet_list_{r, r + v0},
      n_{n}, spins_{3, n}, positions_{3, n}, velocities_{3, n}, speed_{v0} {
         positions_.setRandom(3, n);
         velocities_.setZero();
@@ -726,6 +634,15 @@ void InertialSpin3D::move(bool rebuild){
         verlet_list_.build(positions_);
     }
     connections_ = verlet_list_.get_conn(positions_);
+    update_velocity_full();
+    update_spin();
+    positions_ += velocities_ * dt_;
+    normalise(velocities_, speed_);
+}
+
+
+void InertialSpin3D::move(){
+    connections_ = get_connections(positions_, rc_);
     update_velocity_full();
     update_spin();
     positions_ += velocities_ * dt_;
@@ -802,6 +719,15 @@ InertialSpin3DTP::InertialSpin3DTP(
     : InertialSpin3D{n, 1, v0, T, j, m, f}, nc_{nc} { }
 
 
+void InertialSpin3DTP::move(bool rebuid){
+    connections_ = get_topology_connections(positions_, nc_);
+    update_velocity_full();
+    update_spin();
+    positions_ += velocities_ * dt_;
+    normalise(velocities_, speed_);
+}
+
+
 void InertialSpin3DTP::move(){
     connections_ = get_topology_connections(positions_, nc_);
     update_velocity_full();
@@ -833,6 +759,16 @@ void InertialSpin3DPBC::move(bool rebuild){
         cell_list_.build(positions_);
     }
     connections_ = cell_list_.get_conn(positions_);
+    update_velocity_full();
+    update_spin();
+    positions_ += velocities_ * dt_;
+    fix_positions();
+    normalise(velocities_, speed_);
+}
+
+
+void InertialSpin3DPBC::move(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
     update_velocity_full();
     update_spin();
     positions_ += velocities_ * dt_;

@@ -20,33 +20,12 @@ using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (
 using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 
 
-/*
- * calculate the vicsek alignment of velocities
- */
-template<class T>
-void vicsek_align(T& velocities, const Conn& connections){
-    int dim = velocities.rows();
-    int n = velocities.cols();
-    T new_velocities{dim, n};
-    new_velocities.setZero();
-    for (int i = 0; i < n; i++){
-        for (auto j : connections[i]){
-            new_velocities.col(i) += velocities.col(j);
-        }
-    }
-    velocities = new_velocities;
-}
-
-
 class Vicsek3D{
     protected:
         double noise_;
         double speed_;
         double rc_;
         Conn connections_;
-        void align(){
-            vicsek_align(velocities_, connections_);
-        }
         void add_noise();
         void rotate_noise(Coord3D& noise_xyz);
         void rotate_noise_xyz(Coord3D& noise_xyz);
@@ -91,8 +70,6 @@ class Attanasi2014PCB : public Vicsek3D{
 
 
 class Vicsek3DPBCVN : public Vicsek3DPBC{
-    private:
-        void noisy_align();
     public:
         Vicsek3DPBCVN(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
@@ -129,9 +106,6 @@ class Vicsek2D{
         double speed_;
         double rc_;
         Conn connections_;
-        void align(){
-            vicsek_align(velocities_, connections_);
-        }
         void add_noise();
         VerletList<Coord2D> verlet_list_;
 
@@ -145,26 +119,16 @@ class Vicsek2D{
 };
 
 
-
-class Vicsek2DPBC{
+class Vicsek2DPBC : public Vicsek2D{
     protected:
-        double noise_;
-        double speed_;
         double box_;
-        ConnMat conn_mat_;
-
-        void align();
-        void add_noise();
+        Conn connections_;
         inline void fix_positions() {
             positions_.array() -= box_ * (positions_.array() / box_).floor();
-            }
+        }
 
     public:
-        int n_;
-        Coord2D positions_;
-        Coord2D velocities_;
         CellList2D cell_list_;
-
         Vicsek2DPBC(int n, double r, double eta, double box, double v0);
         Vec2D get_shift(Vec2D p1, Vec2D p2);
         void move(bool rebuild);
@@ -173,8 +137,6 @@ class Vicsek2DPBC{
 
 
 class Vicsek2DPBCVN : public Vicsek2DPBC{
-    private:
-        void noisy_align();
     public:
         Vicsek2DPBCVN(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
@@ -203,15 +165,9 @@ class Vicsek2DPBCVNCO : public Vicsek2DPBC{
 };
 
 
-
 Coord3D xyz_to_sphere(Coord3D& xyz);
 Coord3D sphere_to_xyz(Coord3D& sphere);
 
-void normalise(Coord3D& xyz);
-void normalise(Coord3D& xyz, double spd);
-
-void normalise(Coord2D& xy);
-void normalise(Coord2D& xy, double spd);
 
 /*
  * dump the current phase point to an xyz file
@@ -326,12 +282,13 @@ void load(T system, string filename){
  *  * please refer to 10.1007/s10955-014-1119-3 for the origin of the model
  */
 class InertialSpin3D{
-    private:
+    protected:
         double mass_;
         double imass_;
         double friction_;
         double T_; // temperature
         double J_; // coupling constant 
+        double rc_;
         double v0_sq_inv_;
         VerletList<Coord3D> verlet_list_;
 
@@ -347,6 +304,7 @@ class InertialSpin3D{
             int n, double r, double v0, double T, double j, double m, double f
         );
         void move(bool rebuid);
+        void move();  // without neighbour list
         void add_alignment();
         void add_noise();
         void update_velocity_half();
@@ -366,7 +324,8 @@ class InertialSpin3DTP : public InertialSpin3D {
             int n, int nc, double v0,
             double T, double j, double m, double f
         );
-        void move();
+        void move(bool build);  // fake method
+        void move();  // without neighbour list
 };
 
 
@@ -380,9 +339,11 @@ class InertialSpin3DPBC : public InertialSpin3D {
 
     public:
         InertialSpin3DPBC(
-            int n, double box, double r, double v0, double T, double j, double m, double f
+            int n, double box, double r, double v0,
+            double T, double j, double m, double f
         );
         void move(bool rebuid);
+        void move();  // without neighbour list
 };
 
 
@@ -431,6 +392,9 @@ Conn get_connections(T& positions, double rc){
     double rc2 = rc * rc;
     for (int i=0; i<positions.cols(); i++){
         connections.push_back(vector<int>{});
+    }
+    #pragma omp parallel for
+    for (int i=0; i<positions.cols(); i++){
         for (int j=0; j<positions.cols(); j++){
             if ((positions.col(i) - positions.col(j)).squaredNorm() <= rc2){
                 connections[i].push_back(j);
@@ -439,7 +403,6 @@ Conn get_connections(T& positions, double rc){
     }
     return connections;
 }
-
 
 /*
  * get the neighbours within a metric range in a cubic PBC box
@@ -451,6 +414,9 @@ Conn get_connections_pbc(T& positions, double rc, double box){
     double half_box_2 = box * box / 4;
     for (int i=0; i<positions.cols(); i++){
         connections.push_back(vector<int>{});
+    }
+    #pragma omp parallel for
+    for (int i=0; i<positions.cols(); i++){
         for (int j=0; j<positions.cols(); j++){
             double dist_nd_2 = 0;
             for (auto shift_1d : (positions.col(i) - positions.col(j))){
@@ -467,6 +433,67 @@ Conn get_connections_pbc(T& positions, double rc, double box){
         }
     }
     return connections;
+}
+
+
+template<class T>
+void normalise(T& xyz){
+    int i = 0;
+    for (auto L : xyz.colwise().norm()){
+        xyz.col(i) /= L;
+        i++;
+    }
+}
+
+
+template<class T>
+void normalise(T& xyz, double norm_value){
+    int i = 0;
+    for (auto L : xyz.colwise().norm()){
+        xyz.col(i) = xyz.col(i) / L * norm_value;
+        i++;
+    }
+}
+
+/*
+ * calculate the vicsek alignment of velocities with [v]ectorial [n]oise
+ *     it should work with any dimension
+ * See ginellEPJ2016 for equations
+ */
+template<class T>
+void vicsek_align_vn(T& velocities, const Conn& connections, double noise){
+    int dim = velocities.rows();
+    int n = velocities.cols();
+    T new_velocities{dim, n};
+    T noise_nd{dim, n};
+    new_velocities.setZero();
+    noise_nd.setRandom();
+    normalise(noise_nd, noise);
+    for (int i = 0; i < n; i++){
+        for (auto j : connections[i]){
+            new_velocities.col(i) += velocities.col(j);
+        }
+        new_velocities.col(i) += noise_nd.col(i) * connections[i].size();
+    }
+    velocities = new_velocities;
+}
+
+
+/*
+ * calculate the vicsek alignment of velocities
+ */
+template<class T>
+void vicsek_align(T& velocities, const Conn& connections){
+    int dim = velocities.rows();
+    int n = velocities.cols();
+    T new_velocities{dim, n};
+    new_velocities.setZero();
+    for (int i = 0; i < n; i++){
+        for (auto j : connections[i]){
+            new_velocities.col(i) += velocities.col(j);
+        }
+    }
+    velocities = new_velocities;
 }
 
 

@@ -163,8 +163,6 @@ const char* docstring_vicsek_2d_pbc_vn =\
     "Args:\n\n"\
     "   n (:obj:`int`): number of particles in the system\n"\
     "   box (:obj:`float`): the size of the cubic box\n"\
-    "   eta (:obj:`float`): the magnitude of noise, from 0 to 1\n"\
-    "   v0 (:obj:`float`): the speed in the simulation\n"\
     "   r (:obj:`float`): the interaction range\n"\
     "   pre_steps (:obj:`int`): the simulation steps running without writing to the result\n"\
     "                    typically this is the simulation steps to reach a steady state\n"\
@@ -248,7 +246,9 @@ py::array_t<double> simulate(
         load(system, load_file);
     }
 
-    py::array_t<double> result = py::array_t<double>(run_steps * system.n_ * dim * 2);
+    py::array_t<double> result = py::array_t<double>(
+            run_steps * system.n_ * dim * 2
+    );
     auto buffer_result = result.request();
     auto *ptr_result = (double *) buffer_result.ptr;
 
@@ -293,6 +293,58 @@ py::array_t<double> simulate(
 
 
 /*
+ * simulate vicsek-like systems without using the neighbour list
+ */
+template<class T>
+py::array_t<double> simulate_no_nl(
+        T system, int pre_steps, int run_steps, int jump,
+        string load_file, string dump_file
+        ){
+    int dim = system.positions_.rows();
+    const int offset_frame = 2 * dim * system.n_;  // size of each frame
+    int offset = 0;
+    bool should_dump = dump_file.size() > 0;
+
+    if (load_file.size() > 0){
+        load(system, load_file);
+    }
+
+    py::array_t<double> result = py::array_t<double>(
+            run_steps * system.n_ * dim * 2
+    );
+    auto buffer_result = result.request();
+    auto *ptr_result = (double *) buffer_result.ptr;
+
+    for (int step = 0; step < pre_steps; step++){
+        system.move();
+    }
+
+    int cursor = 0;
+    for (int step = 0; step < run_steps * jump; step++){
+        system.move();
+        if (step % jump == 0){
+            for (int i = 0; i < system.n_; i++){
+                for (int d = 0; d < dim; d++){
+                    offset = (offset_frame * cursor) + (i * 2 * dim) + d;
+                    ptr_result[offset] = system.positions_(d, i);
+                }
+                for (int d = 0; d < dim; d++){
+                    offset = (offset_frame * cursor) + (i * 2 * dim) + d + dim;
+                    ptr_result[offset] = system.velocities_(d, i);
+                }
+            }
+            cursor++;
+            if (should_dump){
+                dump(system, dump_file);
+            }
+        }
+    }
+    result.resize({run_steps, system.n_, 2 * dim});
+
+    return result;
+}
+
+/*
  * Perform a simulation and return a numpy.ndarray
  */
 template<class T>
@@ -334,165 +386,295 @@ py::array_t<double> run(
 }
 
 
+/*
+ * Perform a simulation and return a numpy.ndarray
+ * without using neighbour list
+ */
+template<class T>
+py::array_t<double> run_no_nl(T system, int run_steps, int jump){
+    int dim = system.positions_.rows();
+    const int offset_frame = 2 * dim * system.n_;  // size of each frame
+    int offset = 0;
+    py::array_t<double> result = py::array_t<double>(
+            run_steps * system.n_ * dim * 2
+            );
+    auto buffer_result = result.request();
+    auto *ptr_result = (double *) buffer_result.ptr;
+    int cursor = 0;
+    for (int step = 0; step < run_steps * jump; step++){
+        system.move();
+        if (step % jump == 0){
+            for (int i = 0; i < system.n_; i++){
+                for (int d = 0; d < dim; d++){
+                    offset = (offset_frame * cursor) + (i * 2 * dim) + d;
+                    ptr_result[offset] = system.positions_(d, i);
+                }
+                for (int d = 0; d < dim; d++){
+                    offset = (offset_frame * cursor) + (i * 2 * dim) + d + dim;
+                    ptr_result[offset] = system.velocities_(d, i);
+                }
+            }
+            cursor++;
+        }
+    }
+    result.resize({run_steps, system.n_, 2 * dim});
+    return result;
+}
+
+
 py::array_t<double> vicsek_3d_pbc(
         int n, double box, double eta, double v0, double r,
-        int pre_steps, int run_steps, int jump=1, string load_file="", string dump_file=""
+        int pre_steps, int run_steps, int jump=1,
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Vicsek3DPBC system{n, r, eta, box, v0};
-    int update_step = get_update_step(r, v0);
-    return simulate(system, update_step, pre_steps, run_steps, jump, load_file, dump_file);
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+        );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump, load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> continue_vicsek_3d_pbc(
         int n, double box, double eta, double v0, double r,
-        int run_steps, Coord3D positions, Coord3D velocities, int jump=1
+        int run_steps, Coord3D positions, Coord3D velocities,
+        int jump=1, bool use_nl=false
         ){
     Vicsek3DPBC system{n, r, eta, box, v0};
     system.positions_ = positions;
     system.velocities_ = velocities;
-    int update_step = get_update_step(r, v0);
-    return run(system, update_step, run_steps, jump);
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return run(system, update_step, run_steps, jump);
+    } else {
+        return run_no_nl(system, run_steps, jump);
+    }
 }
 
 
 py::array_t<double> vicsek_3d(
         int n, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Vicsek3D system{n, r, eta, v0};
-    int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump, load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump, load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> continue_vicsek_3d(
         int n, double eta, double v0, double r,
-        int run_steps, Coord3D positions, Coord3D velocities, int jump=1
+        int run_steps, Coord3D positions, Coord3D velocities,
+        int jump=1, bool use_nl=false
         ){
     Vicsek3D system{n, r, eta, v0};
     system.positions_ = positions;
     system.velocities_ = velocities;
-    int update_step = get_update_step(r, v0);
-    return run(system, update_step, run_steps, jump);
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return run(system, update_step, run_steps, jump);
+    } else {
+        return run_no_nl(system, run_steps, jump);
+    }
 }
 
 
 py::array_t<double> vicsek_2d(
         int n, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Vicsek2D system{n, r, eta, v0};
-    int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump, load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> continue_vicsek_2d(
         int n, double eta, double v0, double r,
-        int run_steps, Coord2D positions, Coord2D velocities, int jump=1
+        int run_steps, Coord2D positions, Coord2D velocities,
+        int jump=1, bool use_nl=false
         ){
     Vicsek2D system{n, r, eta, v0};
     system.positions_ = positions;
     system.velocities_ = velocities;
-    int update_step = get_update_step(r, v0);
-    return run(system, update_step, run_steps, jump);
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return run(system, update_step, run_steps, jump);
+    } else {
+        return run_no_nl(system, run_steps, jump);
+    }
 }
-
 
 
 py::array_t<double> vicsek_3d_pbc_inertia(
         int n, double box, double eta, double v0, double r, double alpha,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Vicsek3DPBCInertia system{n, r, eta, box, v0, alpha};
-    int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> vicsek_3d_pbc_inertia_af(
         int n, double box, double eta, double v0, double r, double alpha,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Vicsek3DPBCInertiaAF system{n, r, eta, box, v0, alpha};
-    int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+    if (use_nl) {
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> attanasi2014pcb(
         int n, double eta, double v0, double b, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Attanasi2014PCB system{n, r, eta, v0, b};
-    int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> vicsek_2d_pbc(
         int n, double box, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Vicsek2DPBC system{n, r, eta, box, v0};
-    int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> continue_vicsek_2d_pbc(
         int n, double box, double eta, double v0, double r,
-        int run_steps, Coord2D positions, Coord2D velocities, int jump=1
+        int run_steps, Coord2D positions, Coord2D velocities,
+        int jump=1, bool use_nl=false
         ){
     Vicsek2DPBC system{n, r, eta, box, v0};
     system.positions_ = positions;
     system.velocities_ = velocities;
-    int update_step = get_update_step(r, v0);
-    return run(system, update_step, run_steps, jump);
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return run(system, update_step, run_steps, jump);
+    } else {
+        return run_no_nl(system, run_steps, jump);
+    }
 }
 
 
 py::array_t<double> vicsek_2d_pbc_vn(
         int n, double box, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     Vicsek2DPBCVN system{n, r, eta, box, v0};
     int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+    if (use_nl){
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    }
 }
 
 
 py::array_t<double> continue_vicsek_2d_pbc_vn(
         int n, double box, double eta, double v0, double r,
-        int run_steps, Coord2D positions, Coord2D velocities, int jump=1
+        int run_steps, Coord2D positions, Coord2D velocities,
+        int jump=1, bool use_nl=false
         ){
     Vicsek2DPBCVN system{n, r, eta, box, v0};
     system.positions_ = positions;
     system.velocities_ = velocities;
-    int update_step = get_update_step(r, v0);
-    return run(system, update_step, run_steps, jump);
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return run(system, update_step, run_steps, jump);
+    } else {
+        return run_no_nl(system, run_steps, jump);
+    }
 }
 
 
@@ -500,13 +682,22 @@ py::array_t<double> ism_3d(
         int n, double r, double v0,
         double T, double j, double m, double f,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     InertialSpin3D system{n, r, v0, T, j, m, f};
+    if (use_nl){
     int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
         );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    }
 }
 
 
@@ -514,24 +705,34 @@ py::array_t<double> ism_3d_pbc(
         int n, double box, double r, double v0,
         double T, double j, double m, double f,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file=""
+        string load_file="", string dump_file="",
+        bool use_nl=false
         ){
     InertialSpin3DPBC system{n, box, r, v0, T, j, m, f};
-    int update_step = get_update_step(r, v0);
-    return simulate(
-        system, update_step, pre_steps, run_steps, jump, load_file, dump_file
-        );
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
+            );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+            );
+    }
 }
 
 
 PYBIND11_MODULE(csimulate, m){
-    m.doc() = "common simulations for collective behaviours";
+    m.doc() = "Simulating different models to understand the collective behaviours";
 
     m.def(
         "vicsek_3d_pbc", &vicsek_3d_pbc, docstring_vicsek_3d_pbc,
         py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
@@ -539,14 +740,15 @@ PYBIND11_MODULE(csimulate, m){
         &continue_vicsek_3d_pbc, docstring_vicsek_3d_pbc,
         py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
-        py::arg("jump")=1
+        py::arg("jump")=1, py::arg("use_nl")=false
     );
 
     m.def(
         "vicsek_3d", &vicsek_3d, docstring_vicsek_3d,
         py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
@@ -554,14 +756,15 @@ PYBIND11_MODULE(csimulate, m){
         &continue_vicsek_3d, docstring_vicsek_3d,
         py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
-        py::arg("jump")=1
+        py::arg("jump")=1, py::arg("use_nl")=false
     );
 
     m.def(
         "vicsek_2d", &vicsek_2d, docstring_vicsek_2d,
         py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
@@ -569,7 +772,7 @@ PYBIND11_MODULE(csimulate, m){
         &continue_vicsek_2d, docstring_vicsek_2d,
         py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
-        py::arg("jump")=1
+        py::arg("jump")=1, py::arg("use_nl")=false
     );
 
     m.def(
@@ -578,7 +781,8 @@ PYBIND11_MODULE(csimulate, m){
         py::arg("n"), py::arg("box"), py::arg("eta"),
         py::arg("v0"), py::arg("r"), py::arg("alpha"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
@@ -587,35 +791,40 @@ PYBIND11_MODULE(csimulate, m){
         py::arg("n"), py::arg("box"), py::arg("eta"),
         py::arg("v0"), py::arg("r"), py::arg("alpha"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
         "attanasi2014pcb", &attanasi2014pcb, docstring_attanasi2014pcb,
         py::arg("n"), py::arg("eta"), py::arg("v0"), py::arg("b"), py::arg("r"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
         "vicsek_2d_pbc", &vicsek_2d_pbc, docstring_vicsek_2d_pbc,
         py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
         "continue_vicsek_2d_pbc", &continue_vicsek_2d_pbc, docstring_vicsek_2d_pbc,
         py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
-        py::arg("jump")=1
+        py::arg("jump")=1, py::arg("use_nl")=false
+
     );
 
     m.def(
         "vicsek_2d_pbc_vn", &vicsek_2d_pbc_vn, docstring_vicsek_2d_pbc_vn,
         py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
@@ -623,7 +832,7 @@ PYBIND11_MODULE(csimulate, m){
         &continue_vicsek_2d_pbc_vn, docstring_vicsek_2d_pbc_vn,
         py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
-        py::arg("jump")=1
+        py::arg("jump")=1, py::arg("use_nl")=false
     );
 
     m.def(
@@ -631,7 +840,8 @@ PYBIND11_MODULE(csimulate, m){
         py::arg("n"), py::arg("r"), py::arg("v0"),
         py::arg("T"), py::arg("j"), py::arg("m"), py::arg("f"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")="",
+        py::arg("use_nl")=false
     );
 
     m.def(
@@ -639,6 +849,7 @@ PYBIND11_MODULE(csimulate, m){
         py::arg("n"), py::arg("box"), py::arg("r"), py::arg("v0"),
         py::arg("T"), py::arg("j"), py::arg("m"), py::arg("f"),
         py::arg("pre_steps"), py::arg("run_steps"),
-        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")=""
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")="",
+        py::arg("use_nl")=false
     );
 }

@@ -3,14 +3,13 @@
 #include <chrono>
 
 int main(){
-    int n = 5000;
+    int n = 500;
     int total_steps = 1000;
     int jump = 1;
     int update_step = 100;
 
-
-    Vicsek3DPBC system{
-        n, 1.0, 0.05, 10, 0.1
+    Vicsek2DPBC system{
+        n, 1.0, 0.4, 10, 0.1
     };
     dump(system, "test.xyz");
 
