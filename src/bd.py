@@ -65,27 +65,43 @@ def animate(system, r=100, jump=100, box=None):
     plt.show()
 
 
-def animate_active_2d(system, r=100, jump=100):
+def animate_active_2d(system, r=100, jump=100, box=None):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     ax = fig.add_subplot()
     ax.set_xticks([])
     ax.set_yticks([])
-    if hasattr(system, 'box'):
+    if not isinstance(box, type(None)):
+        if type(box) == tuple:
+            ax.set_xlim(*box)
+            ax.set_ylim(*box)
+        else:
+            ax.set_xlim(0, box)
+            ax.set_ylim(0, box)
+    elif hasattr(system, 'box'):
         ax.set_xlim(0, system.box)
         ax.set_ylim(0, system.box)
-    if sys.dim != 2:
+    if system.dim != 2:
         return NotImplementedError("Only 2D system is Supported")
 
     def update(num, system, scatter):
         for _ in range(jump):
             system.move()
             scatter.set_data(system.r.T)
+            quiver.set_offsets(system.r)
+            quiver.set_UVC(
+                np.cos(system.phi),
+                np.sin(system.phi),
+            )
         return scatter
 
     scatter = ax.plot(
         *system.r.T, color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
+    quiver = ax.quiver(
+        *system.r.T, np.cos(system.phi), np.sin(system.phi),
+        pivot='mid', units='width', color='teal', zorder=5, scale=250/r,
+    )
     ani = animation.FuncAnimation(
         fig, update, 100, fargs=(system, scatter), interval=30
     )
@@ -140,16 +156,17 @@ class BD():
     """
     def __init__(self, N, dim, dt, gamma=None, kT=None, m=None, D=None, **kwargs):
         self.N, self.dim, self.dt = N, dim, dt
-        self.r = np.zeros((N, dim))  # positions
-        self.v = np.zeros((N, dim))  # velocities
         self.gamma = gamma
         self.kT = kT
         self.m = m
         self.D = D
         self.update_parameters()
+        self.r = np.zeros((N, dim))  # positions
         self.f = np.zeros_like(self.r)
         self.interest = {}  # collect quantity of interest
         self.__observers = []  # ovserver design pattern
+        sigma = np.sqrt(self.kT / (self.m * self.N))
+        self.v = np.random.normal(0, sigma, (self.N, self.dim))
 
     def attach(self, observer):
         self.interest = {}
@@ -285,6 +302,9 @@ def Boundary(condition):
                     raise ValueError("the box should be a numerical value")
                 self.volume = self.box ** self.dim
                 self.density = self.N / self.volume
+                repeat = np.ceil(np.power(self.N, 1 / self.dim)).astype(int)
+                lattice = np.array(list(product(*[range(repeat)] * self.dim)))
+                self.r = lattice[:self.N] / repeat * kwargs['box']
 
             def fix_boundary(self):
                 self.r %= self.box
@@ -329,11 +349,6 @@ class BDLJPBC(BD):
             box (float): the size of the cubic periodic box.
         """
         BD.__init__(self, N, dim, dt, **kwargs)
-        repeat = np.ceil(np.power(self.N, 1 / self.dim)).astype(int)
-        lattice = np.array(list(product(*[range(repeat)] * self.dim)))
-        self.r = lattice[:N] / repeat * kwargs['box']
-        sigma = np.sqrt(self.kT / (self.m * self.N))
-        self.v = np.random.normal(0, sigma, (self.N, self.dim))
 
         r_cut = 2.5  # usual constant for LJ system
         if self.box / 2 <= r_cut:  # naïve pbc calculation breaks otherwise
@@ -379,7 +394,7 @@ class ABP2D(BD):
                   np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
         # Re-orient
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
-        self.phi = self.phi % (2 * np.pi) - np.pi
+        self.phi = self.phi % (2 * np.pi)
         self.fix_boundary()
         self.notify()
 
@@ -427,7 +442,7 @@ class Lavergne_2019_Science(ABP2D):
         """
         dist = np.linalg.norm(rij, axis=0)  # N, N
         np.fill_diagonal(dist, np.inf)
-        angle = np.arctan2(rij[1], rij[0])  # N, N
+        angle = np.arctan2(rij[1], rij[0]) % (2 * np.pi)  # N, N
         """
         `angle` is something like
         θ11 | θ21 | θ31
@@ -455,14 +470,19 @@ class Lavergne_2019_Science(ABP2D):
         dφ = √2Dr ξ_φ
         """
         self.is_active = self.get_perception() > self.p_act
-        #print(np.sum(is_active) / self.N)
         # active
         self.r[:, 0] += self.v0 * np.cos(self.phi) * self.dt * self.is_active
         self.r[:, 1] += self.v0 * np.sin(self.phi) * self.dt * self.is_active
         # Brownian
+        self.get_force()
+        self.r += self.D / self.kT * self.f * self.dt  # force
         self.r += np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
         # Re-orient
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
-        self.phi = self.phi % (2 * np.pi) - np.pi
+        self.phi = self.phi % (2 * np.pi)
         self.fix_boundary()
         self.notify()
+
+
+class L2SWCA(Lavergne_2019_Science):
+    force_func = lambda self, rij: force_wca(rij)

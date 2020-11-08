@@ -6,20 +6,22 @@ import bd
 
 
 def test_abp():
-    model = bd.ABP2D
     model = bd.ABP2DWCAPBC
-    N, dim = 512, 2
-    density = 0.5
+    N, dim = 200, 2
+    density = 0.6
+    dt = 0.00005
+    Pe = 100
     nblock, block = 10, 1000
     box = (N / density) ** (1 / dim)
 
     system_abp = model(
-        N, dim, box=box, dt=0.0001,
-        D=1, Pe=50, kT=1, m=1
+        N, dt=dt, Pe=Pe, box=box,
+        D=1, kT=1, m=1
     )
-
-
-    bd.animate(system_abp, r=10, jump=10)
+    bd.animate_active_2d(
+        system_abp, r=10,
+        jump=20, box=box
+    )
 
 
 if __name__ == "__main__":
