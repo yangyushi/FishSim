@@ -6,18 +6,18 @@ import bd
 
 
 model = bd.Lavergne_2019_Science
-model = bd.L2SWCA
+#model = bd.L2SWCA
 N, dim = 50, 2
 nblock, block = 10, 1000
-alpha=np.pi / 2
+alpha=np.pi / 4
 p_act = 0.5
 
 system_abp = model(
-    N, dt=0.001, alpha=alpha, p_act=p_act,
+    N, dt=0.005, alpha=alpha, p_act=p_act,
     D=1, Pe=10, kT=1, m=1,
     R0=100
 )
 
 
 system_abp.move()
-bd.animate_active_2d(system_abp, r=5, jump=50, box=(-500, 500))
+bd.animate_active_2d(system_abp, r=5, jump=100, box=(-120, 120), save='vision.gif', show=False, frames=300)

@@ -7,6 +7,7 @@ __pycache__
 **/tags
 *.xyz
 *.prof
+**/*.gif
 *.png
 *.pdf
 README.html

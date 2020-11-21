@@ -6,9 +6,11 @@ import matplotlib.animation as animation
 import numpy as np
 from numba import njit
 from force import force_lj, force_wca
+from scipy.special import gamma as gamma_func
 
 
-def animate(system, r=100, jump=100, box=None):
+def animate(system, r=100, jump=100, box=None,
+            save='', fps=60, show=False, frames=100):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     if system.dim == 2:
         ax = fig.add_subplot()
@@ -60,12 +62,17 @@ def animate(system, r=100, jump=100, box=None):
         markersize=r
     )[0]
     ani = animation.FuncAnimation(
-        fig, update, 100, fargs=(system, scatter), interval=30
+        fig, update, frames=frames, fargs=(system, scatter), interval=1
     )
-    plt.show()
+    if show:
+        plt.show()
+    if save:
+        ani.save(save, writer='imagemagick', fps=fps)
 
 
-def animate_active_2d(system, r=100, jump=100, box=None):
+def animate_active_2d(
+        system, r=100, jump=100, box=None,
+        save='', fps=60, show=True, frames=100):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     ax = fig.add_subplot()
     ax.set_xticks([])
@@ -103,14 +110,39 @@ def animate_active_2d(system, r=100, jump=100, box=None):
         pivot='mid', units='width', color='teal', zorder=5, scale=250/r,
     )
     ani = animation.FuncAnimation(
-        fig, update, 100, fargs=(system, scatter), interval=30
+        fig, update, frames, fargs=(system, scatter), interval=1
     )
-    plt.show()
+    if show:
+        plt.show()
+    if save:
+        ani.save(save, writer='imagemagick', fps=fps)
 
+class Observer():
+    def __init__(self, block):
+        self.block = block
+        self.count = 0
 
-class Observer(metaclass=ABCMeta):
-    @abstractmethod
-    def update(self, subject): pass
+    def update(self, system):
+        if self.count == self.block - 1:
+            self.collect(system)
+            self.aggregate()
+            self.count = 0
+            system.interest = {}
+        else:
+            self.collect(system)
+            self.count += 1
+
+    def aggregate(self, system):
+        """
+        called at the end of each block
+        """
+        pass
+
+    def collect(self, system):
+        """
+        called at the end of each running step
+        """
+        pass
 
 
 class Thermodynamic(Observer):
@@ -126,29 +158,24 @@ class Thermodynamic(Observer):
          - force_sq       : the total squared force
     """
     def __init__(self, block):
-        self.block = block
-        self.count = 0
+        Observer.__init__(self, block)
         self.Ek = 0
         names = ('E/N cut&shifted', 'P cut&shifted', 'T Kinetic', 'T Config')
         print('|'.join([f'{n.split(" ")[0]: ^20}' for n in names]))
         print('|'.join([f'{n.split(" ")[1]: ^20}' for n in names]))
         print('-' * (21 * len(names)))
 
-    def update(self, sys):
-        if self.count == self.block - 1:
-            e_kin = np.mean(sys.interest['kinetic']) / sys.N
-            e_tot = e_kin + np.mean(sys.interest['potential']) / sys.N
-            press = sys.kT * sys.density + np.mean(sys.interest['virial']) / sys.volume
-            t_kin = 2 * e_kin / sys.dim
-            t_con = np.mean(
-                np.array(sys.interest['force_sq']) / np.array(sys.interest['laplacian'])
-            )
-            quantities = (e_tot, press, t_kin, t_con)
-            print('|'.join([f'{val: ^20.4f}' for val in quantities]))
-            self.count = 0
-            sys.interest = {}
-        else:
-            self.count += 1
+    def aggregate(self, system):
+        e_kin = np.mean(system.interest['kinetic']) / system.N
+        e_tot = e_kin + np.mean(system.interest['potential']) / system.N
+        press = system.kT * system.density + np.mean(system.interest['virial']) / system.volume
+        t_kin = 2 * e_kin / system.dim
+        t_con = np.mean(
+            np.array(system.interest['force_sq']) / np.array(system.interest['laplacian'])
+        )
+        quantities = (e_tot, press, t_kin, t_con)
+        print('|'.join([f'{val: ^20.4f}' for val in quantities]))
+
 
 class BD():
     """
@@ -305,6 +332,7 @@ def Boundary(condition):
                 repeat = np.ceil(np.power(self.N, 1 / self.dim)).astype(int)
                 lattice = np.array(list(product(*[range(repeat)] * self.dim)))
                 self.r = lattice[:self.N] / repeat * kwargs['box']
+                self.get_force()
 
             def fix_boundary(self):
                 self.r %= self.box
@@ -317,8 +345,55 @@ def Boundary(condition):
 
         return SystemPBC
 
+    def align_sphere(system):
+        class SystemAS(system):
+            def __init__(self, *args, **kwargs):
+                self.R = kwargs['R']  # radius of the bounding sphere
+                system.__init__(self, *args, **kwargs)
+                try:
+                    self.R = float(self.R)
+                except (ValueError, TypeError) as err:
+                    raise ValueError("the radius should be a numerical value")
+                self.volume = np.pi**(self.dim / 2) /\
+                              gamma_func(self.dim/2 + 1) * self.R**self.dim
+                self.density = self.N / self.volume
+                p = np.random.randn(self.dim, self.N)  # positions
+                r = np.linalg.norm(p, axis=0)  # radii
+                l = np.random.uniform(0, self.R**2, self.N) ** (1 / self.dim)
+                self.r = (p / r * l).T  # uniform inside n-sphere
+                self.get_force()
+
+            def fix_boundary(self):
+                """
+                fish that are outside of the circle should not move further
+                """
+                is_outside = np.linalg.norm(self.r, axis=1) >= self.R
+                if not np.any(is_outside):
+                    return
+                v_orient = self.v[is_outside]  # n, 2
+                r_orient = self.r[is_outside]  # n, 2
+                v_mag = np.linalg.norm(v_orient, axis=1)  # n,
+                r_mag = np.linalg.norm(r_orient, axis=1)  # n,
+                v_orient /= v_mag[:, np.newaxis]
+                r_orient /= r_mag[:, np.newaxis]
+                angles = np.arccos(np.einsum('ij,ij->i', v_orient, r_orient))  # n,
+                signs = np.sign(np.cross(v_orient, r_orient))
+                # if greater than pi/2, no change, otherwise change to pi/2
+                should_fix = np.abs(angles) < np.pi/2  # n,
+                if not np.any(should_fix):
+                    return
+                r_angle = np.arctan2(r_orient[:, 1], r_orient[:, 0])  # n,
+                v_orient[should_fix, 0] = np.cos(r_angle[should_fix] - signs[should_fix] * np.pi/2) * v_mag[should_fix]
+                v_orient[should_fix, 1] = np.sin(r_angle[should_fix] - signs[should_fix] * np.pi/2) * v_mag[should_fix]
+                self.v[is_outside, :] = v_orient
+                self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
+
+        return SystemAS
+
     if condition == "pbc":
         return pbc_decorator
+    elif condition == "align_sphere":
+        return align_sphere
     else:
         return lambda x: x
 
@@ -355,7 +430,6 @@ class BDLJPBC(BD):
             raise ValueError("The box size must be grater than 5")
 
         self.force_func = force_lj
-        self.get_force()
 
 
 class ABP2D(BD):
@@ -387,14 +461,14 @@ class ABP2D(BD):
         """
         self.get_force()
         # active
-        self.r[:, 0] += self.v0 * np.cos(self.phi) * self.dt
-        self.r[:, 1] += self.v0 * np.sin(self.phi) * self.dt
+        self.r += self.v0 * self.v * self.dt
         # Brownian
         self.r += self.D / self.kT * self.f * self.dt + \
                   np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
         # Re-orient
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
         self.phi = self.phi % (2 * np.pi)
+        self.v = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
         self.fix_boundary()
         self.notify()
 
@@ -471,8 +545,7 @@ class Lavergne_2019_Science(ABP2D):
         """
         self.is_active = self.get_perception() > self.p_act
         # active
-        self.r[:, 0] += self.v0 * np.cos(self.phi) * self.dt * self.is_active
-        self.r[:, 1] += self.v0 * np.sin(self.phi) * self.dt * self.is_active
+        self.r += self.v0 * self.v * self.dt * self.is_active[:, np.newaxis]
         # Brownian
         self.get_force()
         self.r += self.D / self.kT * self.f * self.dt  # force
@@ -480,9 +553,62 @@ class Lavergne_2019_Science(ABP2D):
         # Re-orient
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
         self.phi = self.phi % (2 * np.pi)
+        self.v = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
         self.fix_boundary()
         self.notify()
 
 
+class Vision(Lavergne_2019_Science):
+    def move_overdamp(self):
+        """
+        perception = get_perception
+        dx = v0(perception) cosφ + √2D ξ_x
+        dx = v0(perception) sinφ + √2D ξ_x
+        dφ = √2Dr ξ_φ
+        """
+        perception, target = self.get_perception()
+        self.is_active =  perception > self.p_act
+        # active
+        self.r += self.v0 * self.v * self.dt
+        # Brownian (No translational diffusion)
+        self.get_force()
+        self.r += self.D / self.kT * self.f * self.dt  # force
+        # Re-orient (Orientational diffusion)
+        self.phi -= target * self.is_active
+        self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
+        self.phi = self.phi % (2 * np.pi)
+        self.v = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
+        self.fix_boundary()
+        self.notify()
+
+    def get_perception(self):
+        rij = self.get_pair_shift()  # 2, N, N
+        dist = np.linalg.norm(rij, axis=0)  # N, N
+        np.fill_diagonal(dist, np.inf)
+        angle = np.arctan2(rij[1], rij[0]) % (2 * np.pi)  # N, N
+        angle_diff = self.phi[np.newaxis, :] - angle  # N, N, sum shold be along axis 0
+        angle_diff = angle_diff - np.rint(angle_diff / 2 / np.pi) * 2 * np.pi
+        adj_mat = np.abs(angle_diff) < self.alpha
+        neighbour_num = adj_mat.sum(axis=0)
+        target = (angle_diff * adj_mat).sum(axis=0) / neighbour_num
+        target[neighbour_num==0]=0
+        close = np.argmin(np.abs(angle_diff), axis=0)[None, :]
+        target = np.take_along_axis(angle_diff, close, axis=0).ravel()
+        return np.sum(adj_mat / dist, axis=0) / (2 * np.pi), target
+
+
+@Boundary("align_sphere")
+class Vision_AS(Vision): pass
+    #force_func = lambda self, rij: force_wca(rij)
+
+
 class L2SWCA(Lavergne_2019_Science):
     force_func = lambda self, rij: force_wca(rij)
+
+
+@Boundary("align_sphere")
+class ABP2D_AS(ABP2D): pass
+
+
+@Boundary("align_sphere")
+class ABP2D_AS_WCA(ABP2D): force_func=lambda self, x: force_wca(x)
