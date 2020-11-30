@@ -127,7 +127,7 @@ class Observer():
     def update(self, system):
         if self.count == self.block - 1:
             self.collect(system)
-            self.aggregate()
+            self.aggregate(system)
             self.count = 0
             system.interest = {}
         else:
@@ -361,7 +361,7 @@ def Boundary(condition):
                 self.density = self.N / self.volume
                 p = np.random.randn(self.dim, self.N)  # positions
                 r = np.linalg.norm(p, axis=0)  # radii
-                l = np.random.uniform(0, self.R**2, self.N) ** (1 / self.dim)
+                l = np.random.uniform(0, self.R**self.dim, self.N) ** (1 / self.dim)
                 self.r = (p / r * l).T  # uniform inside n-sphere
                 self.get_force()
 

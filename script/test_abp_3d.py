@@ -2,17 +2,17 @@ import numpy as np
 import sys
 sys.path.append('../src')
 sys.path.append('src')
-import bd
+import simulate as sim
 
-@bd.Boundary("align_sphere")
-class M(bd.ABP3D): pass
+@sim.Boundary("align_sphere")
+class M(sim.ABP3D): pass
 
 
 def test_abp():
     model = M
     N, dim = 100, 3
     density = 1
-    dt = 0.0002
+    dt = 0.002
     Pe = 100
     R = 40
     nblock, block = 10, 1000
@@ -23,7 +23,7 @@ def test_abp():
         D=1, kT=1, m=1, R=R
     )
 
-    bd.animate(
+    sim.animate(
         system_abp, r=10,
         jump=10, box=(-R*2, R*2),
         show=True

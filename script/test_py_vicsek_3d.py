@@ -2,17 +2,19 @@ import numpy as np
 import sys
 sys.path.append('../src')
 sys.path.append('src')
-import bd
+import simulate as sim
 
-@bd.Boundary("align_sphere")
-class M(bd.Vicsek3D): pass
+@sim.Boundary("align_sphere")
+class M1(sim.Vicsek3D): pass
+
+@sim.Boundary("pbc")
+class M2(sim.Vicsek3D): pass
 
 
 def test_vicsek():
-    model = M
-    N, dim = 100, 3
+    N, dim = 50, 3
     density = 1
-    eta = 0.1
+    eta = 0.05
     v0 = 0.05
     r0 = 1
     Pe = 100
@@ -20,16 +22,26 @@ def test_vicsek():
     nblock, block = 10, 1000
     box = (N / density) ** (1 / dim)
 
-    system_abp = model(
+    system = M1(
         N, eta=eta, r0=r0, v0=v0, box=box,
         D=1, kT=1, m=1, R=R
     )
-
-    bd.animate(
-        system_abp, r=10,
-        jump=1, box=(-R*2, R*2),
-        show=True
+    sim.animate(
+        system, r=10,
+        jump=1, box=(-R*1, R*1),
+        show=False, save='vicsek_3d_aligned_sphere.gif',
     )
+
+    system = M2(
+        N, eta=eta, r0=r0, v0=v0, box=box,
+        D=1, kT=1, m=1, R=R
+    )
+    sim.animate(
+        system, r=10,
+        jump=1, box=(0, box),
+        show=False, save='vicsek_3d_pbc.gif'
+    )
+
 
 
 if __name__ == "__main__":

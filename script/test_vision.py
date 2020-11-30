@@ -2,11 +2,11 @@ import numpy as np
 import sys
 sys.path.append('../src')
 sys.path.append('src')
-import bd
+import simulate as sim
 
 
-model = bd.Lavergne_2019_Science
-#model = bd.L2SWCA
+model = sim.Lavergne_2019_Science
+
 N, dim = 50, 2
 nblock, block = 10, 1000
 alpha=np.pi / 4
@@ -20,4 +20,8 @@ system_abp = model(
 
 
 system_abp.move()
-bd.animate_active_2d(system_abp, r=5, jump=100, box=(-120, 120), save='vision.gif', show=True, frames=300)
+sim.animate_active_2d(
+    system_abp, r=5, jump=100,
+    box=(-120, 120), save='vision.gif', show=True, frames=100
+)
+

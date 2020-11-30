@@ -2,7 +2,7 @@ import sys
 sys.path.append('../src')
 sys.path.append('src')
 import numpy as np
-from bd import BD
+from simulate import BD
 from numba import njit
 import matplotlib.pyplot as plt
 
@@ -22,7 +22,7 @@ def get_msd(trajectories, size, step=1):
     return np.arange(0, size), msd
 
 def test_bd(plot=False):
-    N, dim = 100, 5
+    N, dim = 100, 4
     T, dt = 1000, 0.01
     D, kT, m = 1, 1, 1
     x = BD(N=N, dim=dim, dt=dt, D=D, kT=kT, m=m)

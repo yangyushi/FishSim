@@ -2,18 +2,18 @@ import numpy as np
 import sys
 sys.path.append('../src')
 sys.path.append('src')
-import bd
+import simulate as sim
 
 
 def test_abp():
-    model = bd.ABP2DWCAPBC
-    model = bd.ABP2D_AS
-    model = bd.ABP2D_AS_WCA
+    model = sim.ABP2DWCAPBC
+    model = sim.ABP2D_AS
+    model = sim.ABP2D_AS_WCA
     N, dim = 100, 2
     density = 0.5
-    dt = 0.0002
-    Pe = 100
-    R = 40
+    dt = 0.0005
+    Pe = 10
+    R = 50
     nblock, block = 10, 1000
     box = (N / density) ** (1 / dim)
 
@@ -21,9 +21,10 @@ def test_abp():
         N, dt=dt, Pe=Pe, box=box,
         D=1, kT=1, m=1, R=R
     )
-    bd.animate_active_2d(
+    sim.animate_active_2d(
         system_abp, r=10,
-        jump=100, box=(-R*2, R*2)
+        jump=100, box=(-R*2, R*2),
+        show=True
     )
 
 
