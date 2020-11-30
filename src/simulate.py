@@ -410,10 +410,111 @@ def Boundary(condition):
 
         return SystemAS
 
+    def align_half_sphere(system):
+        class SystemAHS(system):
+            """
+            Particles aligh with the boundary formed by the cut of
+                x^2 + y^2 + ... = R  (sphere) and
+                y = 0 or z = 0  (cap)
+            """
+            def __init__(self, *args, **kwargs):
+                self.R = kwargs['R']  # radius of the bounding sphere
+                system.__init__(self, *args, **kwargs)
+                try:
+                    self.R = float(self.R)
+                except (ValueError, TypeError) as err:
+                    raise ValueError("the radius should be a numerical value")
+                self.volume = np.pi**(self.dim / 2) /\
+                              gamma_func(self.dim/2 + 1) * self.R**self.dim
+                self.density = self.N / self.volume
+                p = np.random.randn(self.dim, self.N)  # positions
+                r = np.linalg.norm(p, axis=0)  # radii
+                l = np.random.uniform(0, self.R**self.dim, self.N) ** (1 / self.dim)
+                self.r = (p / r * l).T  # uniform inside n-sphere
+                self.r[self.r[:, self.dim-1] > 0, self.dim-1] *= -1
+                self.get_force()
+
+            def fix_boundary(self):
+                """
+                fish that are outside of the circle should not move further
+                """
+                v0 = self.v.copy()
+                out_sphere = np.linalg.norm(self.r, axis=1) >= self.R
+                out_cap = self.r[:, self.dim - 1] > 0
+                is_outside = np.logical_or(out_sphere, out_cap)
+                if not np.any(is_outside):
+                    return
+                excess_cap = self.r[is_outside, self.dim - 1]  # shape (N', ) prime means N outside
+                excess_sph = np.linalg.norm(self.r[is_outside], axis=1) - self.R  # shape (N', )
+                v_orient = self.v[is_outside]  # n, 2
+                r_orient = self.r[is_outside]  # n, 2
+                v_mag = np.linalg.norm(v_orient, axis=1)  # n,
+                r_mag = np.linalg.norm(r_orient, axis=1)  # n,
+                v_orient /= v_mag[:, np.newaxis]
+                r_orient /= r_mag[:, np.newaxis]
+                angles = np.arccos(np.einsum('ij,ij->i', v_orient, r_orient))  # n,
+                # if greater than pi/2, no change, otherwise change to pi/2
+                should_fix_cap = v_orient[:, self.dim - 1] > 0
+                should_fix_sph = np.abs(angles) < np.pi/2  # n
+                should_fix_cap[excess_cap < excess_sph] = False
+                should_fix_sph[excess_cap >= excess_sph] = False
+                should_fix = np.logical_or(should_fix_sph, should_fix_cap)
+                if not np.any(should_fix):
+                    return
+                if self.dim == 2:
+                    # fix the particles that exceeds the sphere
+                    if np.sum(should_fix_sph) > 0:
+                        signs = np.sign(np.cross(v_orient, r_orient))
+                        r_angle = np.arctan2(r_orient[:, 1], r_orient[:, 0])  # n,
+                        v_orient[should_fix_sph, 0] = np.cos(
+                            r_angle[should_fix_sph] - signs[should_fix_sph] * np.pi/2
+                        ) * v_mag[should_fix_sph]
+                        v_orient[should_fix_sph, 1] = np.sin(
+                            r_angle[should_fix_sph] - signs[should_fix_sph] * np.pi/2
+                        ) * v_mag[should_fix_sph]
+                    # fix the particles that exceeds the cap
+                    fix_cap_num = np.sum(should_fix_cap)
+                    if fix_cap_num > 0:
+                        signs = np.sign(v_orient[should_fix_cap, 0])
+                        cap_fixed = np.repeat(np.array((1, 0))[np.newaxis, :], fix_cap_num, axis=0)
+                        v_orient[should_fix_cap] = cap_fixed
+                        v_orient[should_fix_cap, 0] *= signs
+                        v_orient[should_fix_cap] *= v_mag[should_fix_cap][:, np.newaxis]
+                    # update velocity
+                    self.v[is_outside, :] = v_orient
+                    self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
+                elif self.dim == 3:
+                    # fix the particles that exceeds the sphere
+                    if np.sum(should_fix_sph) > 0:
+                        e_align = np.cross(
+                            r_orient[should_fix_sph],
+                            np.cross(v_orient[should_fix_sph], r_orient[should_fix_sph]),
+                        )
+                        e_align = e_align / np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                        to_fix = is_outside.copy()
+                        to_fix[to_fix] *= should_fix_sph   # to fix = outside & angle < np.pi/2
+                        self.o[to_fix] = e_align
+                    # fix the particles that exceeds the cap
+                    if np.sum(should_fix_cap) > 0:
+                        e_align = v_orient[should_fix_cap].copy()
+                        e_align[:, -1] = 0
+                        e_align /= np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                        to_fix = is_outside.copy()
+                        to_fix[to_fix] *= should_fix_cap   # to fix = outside & angle < np.pi/2
+                        self.o[to_fix] = e_align
+                    # update the velocity
+                    self.v[is_outside] = self.o[is_outside] * v_mag[:, np.newaxis]
+                else:
+                    raise ValueError("Only 2D and 3D systems are supported")
+        return SystemAHS
+
+
     if condition == "pbc":
         return pbc_decorator
     elif condition == "align_sphere":
         return align_sphere
+    elif condition == "align_half_sphere":
+        return align_half_sphere
     else:
         return lambda x: x
 

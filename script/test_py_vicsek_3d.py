@@ -4,7 +4,7 @@ sys.path.append('../src')
 sys.path.append('src')
 import simulate as sim
 
-@sim.Boundary("align_sphere")
+@sim.Boundary("align_half_sphere")
 class M1(sim.Vicsek3D): pass
 
 @sim.Boundary("pbc")
@@ -13,8 +13,8 @@ class M2(sim.Vicsek3D): pass
 
 def test_vicsek():
     N, dim = 50, 3
-    density = 1
-    eta = 0.05
+    density = 0.5
+    eta = 0.2
     v0 = 0.05
     r0 = 1
     Pe = 100
@@ -29,9 +29,11 @@ def test_vicsek():
     sim.animate(
         system, r=10,
         jump=1, box=(-R*1, R*1),
-        show=False, save='vicsek_3d_aligned_sphere.gif',
+        show=True,
+       # save='vicsek_3d_aligned_sphere.gif',
     )
 
+    """
     system = M2(
         N, eta=eta, r0=r0, v0=v0, box=box,
         D=1, kT=1, m=1, R=R
@@ -41,7 +43,7 @@ def test_vicsek():
         jump=1, box=(0, box),
         show=False, save='vicsek_3d_pbc.gif'
     )
-
+    """
 
 
 if __name__ == "__main__":

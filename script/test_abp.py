@@ -5,13 +5,17 @@ sys.path.append('src')
 import simulate as sim
 
 
+@sim.Boundary("align_half_sphere")
+class M1(sim.ABP2D): pass
+
 def test_abp():
     model = sim.ABP2DWCAPBC
     model = sim.ABP2D_AS
     model = sim.ABP2D_AS_WCA
+    model = M1
     N, dim = 100, 2
     density = 0.5
-    dt = 0.0005
+    dt = 0.05
     Pe = 10
     R = 50
     nblock, block = 10, 1000
@@ -23,7 +27,7 @@ def test_abp():
     )
     sim.animate_active_2d(
         system_abp, r=10,
-        jump=100, box=(-R*2, R*2),
+        jump=1, box=(-R*2, R*2),
         show=True
     )
 
