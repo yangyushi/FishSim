@@ -24,8 +24,8 @@ def get_msd(trajectories, size, step=1):
 def test_bd(plot=False):
     N, dim = 100, 5
     T, dt = 1000, 0.01
-    D, kT = 1, 1
-    x = BD(N=N, dim=dim, dt=dt, D=D, kT=kT)
+    D, kT, m = 1, 1, 1
+    x = BD(N=N, dim=dim, dt=dt, D=D, kT=kT, m=m)
     trajs = np.empty((T, N, dim))
     for t in range(T):
         x.move_overdamp()

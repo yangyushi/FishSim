@@ -7,6 +7,7 @@ import numpy as np
 from numba import njit
 from force import force_lj, force_wca
 from scipy.special import gamma as gamma_func
+from noise_3d import add_vicsek_noise_3d
 
 
 def animate(system, r=100, jump=100, box=None,
@@ -117,6 +118,7 @@ def animate_active_2d(
     if save:
         ani.save(save, writer='imagemagick', fps=fps)
 
+
 class Observer():
     def __init__(self, block):
         self.block = block
@@ -226,7 +228,7 @@ class BD():
 
     def get_pair_shift(self):
         """
-        The content in the result is rij = ri - rj
+        The content in the result is rij = ri - rj, shape (dim, N, N)
 
         ..code-block::
 
@@ -367,6 +369,7 @@ def Boundary(condition):
                 """
                 fish that are outside of the circle should not move further
                 """
+                v0 = self.v.copy()
                 is_outside = np.linalg.norm(self.r, axis=1) >= self.R
                 if not np.any(is_outside):
                     return
@@ -379,14 +382,31 @@ def Boundary(condition):
                 angles = np.arccos(np.einsum('ij,ij->i', v_orient, r_orient))  # n,
                 signs = np.sign(np.cross(v_orient, r_orient))
                 # if greater than pi/2, no change, otherwise change to pi/2
-                should_fix = np.abs(angles) < np.pi/2  # n,
+                should_fix = np.abs(angles) < np.pi/2  # n
                 if not np.any(should_fix):
                     return
-                r_angle = np.arctan2(r_orient[:, 1], r_orient[:, 0])  # n,
-                v_orient[should_fix, 0] = np.cos(r_angle[should_fix] - signs[should_fix] * np.pi/2) * v_mag[should_fix]
-                v_orient[should_fix, 1] = np.sin(r_angle[should_fix] - signs[should_fix] * np.pi/2) * v_mag[should_fix]
-                self.v[is_outside, :] = v_orient
-                self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
+                if self.dim == 2:
+                    r_angle = np.arctan2(r_orient[:, 1], r_orient[:, 0])  # n,
+                    v_orient[should_fix, 0] = np.cos(
+                        r_angle[should_fix] - signs[should_fix] * np.pi/2
+                    ) * v_mag[should_fix]
+                    v_orient[should_fix, 1] = np.sin(
+                        r_angle[should_fix] - signs[should_fix] * np.pi/2
+                    ) * v_mag[should_fix]
+                    self.v[is_outside, :] = v_orient
+                    self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
+                elif self.dim == 3:
+                    e_align = np.cross(
+                        r_orient[should_fix],
+                        np.cross(v_orient[should_fix], r_orient[should_fix]),
+                    )
+                    e_align = e_align / np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                    to_fix = is_outside.copy()
+                    to_fix[to_fix] *= should_fix   # to fix = outside & angle < np.pi/2
+                    self.o[to_fix] = e_align
+                    self.v[is_outside] = self.o[is_outside] * v_mag[:, np.newaxis]
+                else:
+                    raise ValueError("Only 2D and 3D systems are supported")
 
         return SystemAS
 
@@ -432,6 +452,48 @@ class BDLJPBC(BD):
         self.force_func = force_lj
 
 
+class Vicsek3D(BD):
+    """
+    Vicsek Model Simulation in 3D
+    """
+    def __init__(self, N, eta, v0, r0, **kwargs):
+        BD.__init__(self, N, dim=3, dt=1, **kwargs)
+        self.v0 = v0  # speed
+        self.r0 = r0  # interaction range
+        self.eta = eta
+        self.r = np.random.randn(self.N, self.dim)
+        self.o = np.random.randn(self.N, self.dim)  # orientation
+        self.o = self.o / np.linalg.norm(self.o, axis=1)[:, np.newaxis]
+        self.v = self.o * self.v0
+
+    def move(self):
+        self.get_force()
+        # active
+        self.r += self.v * self.dt
+
+        rij = self.get_pair_shift()
+        dij = np.linalg.norm(rij, axis=0)  # distances, shape (N, N)
+        aij = dij < self.r0  # adjacency matrix (N, N)
+        nni = np.sum(aij, axis=0)  # number of neighbours for each particle
+
+        vii = self.v.T[:, np.newaxis, :] * np.ones((3, self.N, 1))  # (3, N, N)
+        v_mean = np.sum(vii * aij[np.newaxis, :, :], axis=2) / nni  # (3, N)
+        v_xy = np.linalg.norm(v_mean[:2], axis=0)  # (N,)
+        azi = np.arctan2(v_mean[1], v_mean[0]) # (N,)
+        ele = np.arctan(v_mean[2] / v_xy)  # (N,)
+        azi, ele = add_vicsek_noise_3d(azi, ele, eta=self.eta)
+        e_xy = np.cos(ele)
+        self.o[:, 2] = np.sin(ele)
+        self.o[:, 1] = e_xy * np.sin(azi)
+        self.o[:, 0] = e_xy * np.cos(azi)
+        self.v = self.o * self.v0
+
+        self.fix_boundary()
+        self.notify()
+
+    def move_overdamp(self): self.move()
+
+
 class ABP2D(BD):
     """
     Pe = 3 * v0 * τr / σ = 3 v0 / Dr = v0 / D  (σ = 1)
@@ -449,26 +511,102 @@ class ABP2D(BD):
         self.v0 = self.Pe * self.D
         self.Dr = 3 * self.D
         self.r = np.random.randn(self.N, self.dim)
-        sigma = np.sqrt(self.kT / (self.m * self.N))
-        self.v = np.random.normal(0, sigma, (self.N, self.dim))
+        self.o = np.random.randn(self.N, self.dim)  # orientation
+        self.o = self.o / np.linalg.norm(self.o, axis=1)[:, np.newaxis]
+        self.v = self.o * self.v0
         self.phi = np.random.uniform(0, 2 * np.pi, self.N)
 
     def move_overdamp(self):
         """
         dx = v0 cosφ + √2D ξ_x
-        dx = v0 sinφ + √2D ξ_x
+        dy = v0 sinφ + √2D ξ_x
         dφ = √2Dr ξ_φ
         """
         self.get_force()
         # active
-        self.r += self.v0 * self.v * self.dt
+        self.r += self.v * self.dt
         # Brownian
         self.r += self.D / self.kT * self.f * self.dt + \
                   np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
         # Re-orient
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
         self.phi = self.phi % (2 * np.pi)
-        self.v = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
+        self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
+        self.v = self.o * self.v0
+        self.fix_boundary()
+        self.notify()
+
+    def move(self):
+        self.move_overdamp()
+
+
+class ABP3D(BD):
+    """
+    Pe = 3 * v0 * τr / σ = 3 v0 / Dr = v0 / D  (σ = 1)
+    Dr = 3 * Dt / σ^2    = 3 D                 (σ = 1)
+    D  = kT / (m * γ)                          (σ = 1)
+    v0 = Pe * D
+
+    see wysocki-2014-EPL (3D simulation)
+    """
+    def __init__(self, N, dt, Pe, **kwargs):
+        BD.__init__(self, N, dim=3, dt=dt, **kwargs)
+        if not self.D:
+            raise KeyError("Missing the Diffusion constant of the system")
+        self.Pe = Pe
+        self.v0 = self.Pe * self.D
+        self.Dr = 3 * self.D
+        self.r = np.random.randn(self.N, self.dim)
+        self.o = np.random.randn(self.N, self.dim)  # orientation
+        self.o /= np.linalg.norm(self.o, axis=1)[:, np.newaxis]
+        self.v = self.o * self.v0
+
+    def rot_diffuse(self):
+        """
+        Perform the rotational diffusion
+        (https://github.com/FTurci/active-lammps, I copied Francesco's code)
+        (Winkler et al. Soft Matter, 2015, 11, 6680)
+        """
+        ox, oy, oz = self.o.T
+        cos_theta = oz
+        sin_theta = np.sqrt(1 - oz**2)
+        phi = np.arctan2(oy, ox)
+        cos_phi = np.cos(phi)
+        sin_phi = np.sin(phi)
+
+        e_theta = np.empty((3, self.N))
+        e_phi = np.empty((3, self.N))
+        e_theta[0] =  cos_phi * cos_theta
+        e_theta[1] =  sin_phi * cos_theta
+        e_theta[2] =           -sin_theta
+        e_phi[0]   = -sin_phi
+        e_phi[1]   =  cos_phi
+        e_phi[2]   =  0.0
+
+        r1, r2 = np.random.randn(2, self.N) * np.sqrt(2 * self.Dr)
+        dt_wiener = np.sqrt(self.dt)
+        for i in range(3):
+            self.o[:, i] += e_theta[i] * dt_wiener * r1 +\
+                            e_phi[i]   * dt_wiener * r2 -\
+                        2 * self.Dr * self.dt * self.o[:, i]
+        self.o /= np.linalg.norm(self.o, axis=1)[:, np.newaxis]
+
+    def move_overdamp(self):
+        """
+        dx = v0 cos cosφ + √2D ξ_x
+        dy = v0 sinφ + √2D ξ_x
+        dz = v0 sinφ + √2D ξ_x
+        dφ = √2Dr ξ_φ
+        """
+        self.get_force()
+        # active
+        self.r += self.v * self.dt
+        # Brownian
+        self.r += self.D / self.kT * self.f * self.dt + \
+                  np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
+        # Re-orient
+        self.rot_diffuse()
+        self.v = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -545,7 +683,7 @@ class Lavergne_2019_Science(ABP2D):
         """
         self.is_active = self.get_perception() > self.p_act
         # active
-        self.r += self.v0 * self.v * self.dt * self.is_active[:, np.newaxis]
+        self.r += self.v * self.dt * self.is_active[:, np.newaxis]
         # Brownian
         self.get_force()
         self.r += self.D / self.kT * self.f * self.dt  # force
@@ -553,7 +691,8 @@ class Lavergne_2019_Science(ABP2D):
         # Re-orient
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
         self.phi = self.phi % (2 * np.pi)
-        self.v = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
+        self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
+        self.v = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -569,7 +708,7 @@ class Vision(Lavergne_2019_Science):
         perception, target = self.get_perception()
         self.is_active =  perception > self.p_act
         # active
-        self.r += self.v0 * self.v * self.dt
+        self.r += self.v * self.dt
         # Brownian (No translational diffusion)
         self.get_force()
         self.r += self.D / self.kT * self.f * self.dt  # force
@@ -577,7 +716,8 @@ class Vision(Lavergne_2019_Science):
         self.phi -= target * self.is_active
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
         self.phi = self.phi % (2 * np.pi)
-        self.v = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
+        self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
+        self.v = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -599,11 +739,9 @@ class Vision(Lavergne_2019_Science):
 
 @Boundary("align_sphere")
 class Vision_AS(Vision): pass
-    #force_func = lambda self, rij: force_wca(rij)
 
 
-class L2SWCA(Lavergne_2019_Science):
-    force_func = lambda self, rij: force_wca(rij)
+class L2SWCA(Lavergne_2019_Science): force_func = lambda self, rij: force_wca(rij)
 
 
 @Boundary("align_sphere")

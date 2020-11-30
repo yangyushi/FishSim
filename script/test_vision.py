@@ -20,4 +20,4 @@ system_abp = model(
 
 
 system_abp.move()
-bd.animate_active_2d(system_abp, r=5, jump=100, box=(-120, 120), save='vision.gif', show=False, frames=300)
+bd.animate_active_2d(system_abp, r=5, jump=100, box=(-120, 120), save='vision.gif', show=True, frames=300)
