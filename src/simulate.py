@@ -1,13 +1,12 @@
-from abc import ABCMeta, abstractmethod
-import matplotlib.pyplot as plt
-from itertools import product
-from scipy.spatial.distance import pdist, cdist, squareform
-import matplotlib.animation as animation
+import pickle
 import numpy as np
-from numba import njit
+from itertools import product
+import matplotlib.pyplot as plt
 from force import force_lj, force_wca
-from scipy.special import gamma as gamma_func
+import matplotlib.animation as animation
 from noise_3d import add_vicsek_noise_3d
+from scipy.special import gamma as gamma_func
+from scipy.spatial.distance import pdist, cdist, squareform
 
 
 def animate(system, r=100, jump=100, box=None,
@@ -121,18 +120,18 @@ def animate_active_2d(
 
 class Observer():
     def __init__(self, block):
-        self.block = block
-        self.count = 0
+        self.__block = block
+        self.__count = 0
 
     def update(self, system):
-        if self.count == self.block - 1:
+        if self.__count == self.__block - 1:
             self.collect(system)
             self.aggregate(system)
-            self.count = 0
+            self.__count = 0
             system.interest = {}
         else:
             self.collect(system)
-            self.count += 1
+            self.__count += 1
 
     def aggregate(self, system):
         """
@@ -177,6 +176,81 @@ class Thermodynamic(Observer):
         )
         quantities = (e_tot, press, t_kin, t_con)
         print('|'.join([f'{val: ^20.4f}' for val in quantities]))
+
+
+class DumpXYZ(Observer):
+    """
+    Dump the configurations (positions & velocities) for each block
+        into a xyz file
+    """
+    def __init__(self, frequency, filename):
+        Observer.__init__(self, frequency)
+        if '.xyz' == filename[-4:]:
+            fname = filename
+        else:
+            fname = filename + '.xyz'
+        self.f = open(fname, 'w')
+        self.count = 0
+        self.active = True
+
+    def aggregate(self, system):
+        """
+        Append many frames to an xyz file
+        """
+        if self.active:
+            configuration = np.concatenate((system.r, system.v), axis=1)
+            np.savetxt(
+                self.f, configuration, delimiter='\t',
+                fmt=['A\t%.8e'] + ['%.8e' for i in range(2 * system.dim - 1)],
+                comments='',
+                header='%s\nframe %s' % (system.N, self.count)
+            )
+            self.count += 1
+
+    def stop(self):
+        self.active = False
+
+    def start(self):
+        self.active = True
+
+
+class DumpModel(Observer):
+    def __init__(self, frequency, filename):
+        Observer.__init__(self, frequency)
+        if '.pkl' == filename[-4:]:
+            fname = filename
+        else:
+            fname = filename + '.pkl'
+        self.f = open(fname, 'wb')
+        self.positions, self.velocities = [], []
+        self.active = True
+        self.not_dumped = True
+
+    def aggregate(self, system):
+        if self.active and self.not_dumped:
+            self.positions.append(system.r)
+            self.velocities.append(system.v)
+
+    def stop(self):
+        self.active = False
+
+    def start(self):
+        self.active = True
+
+    def dump(self, Model):
+        """
+        The constructor of class Model should be
+
+        ..code-block::
+
+            Model(positions, velocities)
+        """
+        p = np.array(self.positions)
+        v = np.array(self.velocities)
+        model = Model(p, v)
+        pickle.dump(model, self.f)
+        self.f.close()
+        self.not_dumped = False
 
 
 class BD():

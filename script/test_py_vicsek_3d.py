@@ -3,6 +3,7 @@ import sys
 sys.path.append('../src')
 sys.path.append('src')
 import simulate as sim
+import fish_corr as fc
 
 @sim.Boundary("align_half_sphere")
 class M1(sim.Vicsek3D): pass
@@ -26,12 +27,20 @@ def test_vicsek():
         N, eta=eta, r0=r0, v0=v0, box=box,
         D=1, kT=1, m=1, R=R
     )
+
+    dump_xyz = sim.DumpXYZ(frequency=10, filename='vicsek-3d-ahs')
+    dump_mod = sim.DumpModel(frequency=10, filename='vicsek-3d-ahs')
+
+    system.attach(dump_xyz)
+    system.attach(dump_mod)
+
     sim.animate(
         system, r=10,
         jump=1, box=(-R*1, R*1),
         show=True,
        # save='vicsek_3d_aligned_sphere.gif',
     )
+    dump_mod.dump(fc.SimMovie)
 
     """
     system = M2(
