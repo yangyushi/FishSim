@@ -2,7 +2,7 @@ import numpy as np
 import sys
 sys.path.append('../src')
 sys.path.append('src')
-import simulate as sim
+import fish_sim as sim
 
 
 def test_lj():

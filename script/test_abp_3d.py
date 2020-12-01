@@ -2,7 +2,7 @@ import numpy as np
 import sys
 sys.path.append('../src')
 sys.path.append('src')
-import simulate as sim
+import fish_sim as sim
 
 @sim.Boundary("align_sphere")
 class M(sim.ABP3D): pass

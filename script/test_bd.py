@@ -2,7 +2,7 @@ import sys
 sys.path.append('../src')
 sys.path.append('src')
 import numpy as np
-from simulate import BD
+from fish_sim import BD
 from numba import njit
 import matplotlib.pyplot as plt
 
