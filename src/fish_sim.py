@@ -582,6 +582,174 @@ def Boundary(condition):
                     raise ValueError("Only 2D and 3D systems are supported")
         return SystemAHS
 
+    def align_fish_bowl(system):
+        class SystemAFB(system):
+            """
+            Particles aligh with the boundary formed by the cut of
+                y = c * x^2 or z = c * (x^2 + y^2)  (hyperbolic) and
+                y = 0 or z = 0  (cap)
+
+            Useful:
+                z = c * r^2
+                r = sqrt(z / c)
+            """
+            def __init__(self, *args, **kwargs):
+                self.c = kwargs['c']
+                self.z_max = kwargs['z_max']
+                self.r_max = np.sqrt(self.z_max / self.c)
+                system.__init__(self, *args, **kwargs)
+                try:
+                    self.z_max = float(self.z_max)
+                except (ValueError, TypeError) as err:
+                    raise ValueError("z_max should be a numerical value")
+                try:
+                    self.c = float(self.c)
+                except (ValueError, TypeError) as err:
+                    raise ValueError("c should be a numerical value")
+                rand_z = np.random.uniform(0, self.z_max, self.N)
+                rand_r = np.random.uniform(-1, 1, self.N) * np.sqrt(rand_z / self.c)
+                if self.dim == 2:
+                    self.volume = 2 * (
+                       self.z_max * self.r_max -\
+                       2 * self.c / 3 * self.r_max**3
+                    )
+                    self.r = np.array((rand_z, rand_r)).T
+                elif self.dim == 3:
+                    self.volume = np.pi / self.c * self.z_max**2
+                    rand_phi = np.random.uniform(0, np.pi * 2, self.N)
+                    self.r = np.array((
+                        rand_r * np.cos(rand_phi),
+                        rand_r * np.sin(rand_phi),
+                        rand_z
+                    )).T
+                else:
+                    raise ValueError("Invalid Dimension")
+                self.density = self.N / self.volume
+                self.get_force()
+
+            def __project(self, r, z):
+                r"""
+                Calculate the projection of 2D point in cylindar coordinate system to a hyprobolic function
+
+                .. math::
+
+                    y = \textsf{self.c} \cdot x^2
+
+                Args:
+                    r (:obj:`float` or :obj:`numpy.ndarray`): the radii of a point in cylinder coordinate system
+                    z (:obj:`float` or :obj:`numpy.ndarray`): the z (height) of a point
+
+                Return:
+                    (:obj:`float` or :obj:`numpy.ndarray`): The projected coordinates in 2D
+                """
+                p = 2**(1/3)
+                term = 108 * self.c ** 4 * r + np.sqrt(
+                    11664 * self.c**8 * r**2 +
+                    864 * self.c**6 * (1 - 2 * self.c * z)**3
+                )
+                term = np.power(term, 1/3)
+                radii_proj = -(p * (1 - 2 * self.c * z)) / term +\
+                    term / (6 * p * self.c**2)
+                z_proj = self.c * radii_proj ** 2
+                return radii_proj, z_proj
+
+            def fix_boundary(self):
+                """
+                fish that are outside of the boundary should not move further
+                """
+                v0 = self.v.copy()
+                radii = np.linalg.norm(self.r[:, : self.dim - 1], axis=1)  # shape (N, )
+                z = self.r[:, self.dim - 1]  # it is actually y in 2D
+                out_hyp = self.c * radii**2 > z
+                out_cap = z > self.z_max
+                is_outside = np.logical_or(out_hyp, out_cap)
+                if not np.any(is_outside):
+                    return
+                radii_out = radii[is_outside]
+                z_out = z[is_outside]
+                radii_out_proj, z_out_proj = self.__project(radii_out, z_out)
+                excess_cap = z_out - self.z_max
+                excess_hyp = np.sqrt(
+                    (radii_out - radii_out_proj)**2 + (z_out - z_out_proj)**2
+                )
+                excess_hyp[self.c * radii_out**2 < z_out] = 0  # ignore the inside cases
+
+                v_orient = self.v[is_outside]  # n, 2
+                v_mag = np.linalg.norm(v_orient, axis=1)  # n,
+                v_orient /= v_mag[:, np.newaxis]
+                if self.dim == 2:
+                    r_proj = np.array((
+                        np.sign(self.r[is_outside, 0]) * radii_out_proj,  # projected x
+                        z_out_proj  # projected y
+                    )).T
+                elif self.dim == 3:
+                    phi = np.arctan2(self.r[is_outside, 1], self.r[is_outside, 0])
+                    r_proj = np.array((
+                        radii_out_proj * np.cos(phi),
+                        radii_out_proj * np.sin(phi),
+                        z_out_proj
+                    )).T
+                else:
+                    raise ValueError("Only 2D and 3D systems are supported")
+                r_orient = self.r[is_outside] - r_proj # n, dim
+                r_mag = np.linalg.norm(r_orient, axis=1)  # n,
+                r_orient /= r_mag[:, np.newaxis]
+                angles = np.arccos(np.einsum('ij,ij->i', v_orient, r_orient))  # n,
+                # if greater than pi/2, no change, otherwise change to pi/2
+                should_fix_cap = v_orient[:, self.dim-1] > 0
+                should_fix_hyp = np.abs(angles) < np.pi / 2  # n
+                should_fix_cap[excess_cap < excess_hyp] = False
+                should_fix_hyp[excess_cap >= excess_hyp] = False
+                should_fix = np.logical_or(should_fix_hyp, should_fix_cap)
+                if not np.any(should_fix):
+                    return
+                if self.dim == 2:
+                    # fix the particles that exceeds the hyperbolic
+                    if np.sum(should_fix_hyp) > 0:
+                        signs = np.sign(np.cross(v_orient, r_orient))
+                        r_angle = np.arctan2(r_orient[:, 1], r_orient[:, 0])  # n,
+                        v_orient[should_fix_hyp, 0] = np.cos(
+                            r_angle[should_fix_hyp] - signs[should_fix_hyp] * np.pi/2
+                        ) * v_mag[should_fix_hyp]
+                        v_orient[should_fix_hyp, 1] = np.sin(
+                            r_angle[should_fix_hyp] - signs[should_fix_hyp] * np.pi/2
+                        ) * v_mag[should_fix_hyp]
+                    # fix the particles that exceeds the cap
+                    fix_cap_num = np.sum(should_fix_cap)
+                    if fix_cap_num > 0:
+                        signs = np.sign(v_orient[should_fix_cap, 0])
+                        cap_fixed = np.repeat(np.array((1, 0))[np.newaxis, :], fix_cap_num, axis=0)
+                        v_orient[should_fix_cap] = cap_fixed
+                        v_orient[should_fix_cap, 0] *= signs
+                        v_orient[should_fix_cap] *= v_mag[should_fix_cap][:, np.newaxis]
+                    # update velocity
+                    self.v[is_outside, :] = v_orient
+                    self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
+                elif self.dim == 3:
+                    # fix the particles that exceeds the hyperbolic
+                    if np.sum(should_fix_hyp) > 0:
+                        e_align = np.cross(
+                            r_orient[should_fix_hyp],
+                            np.cross(v_orient[should_fix_hyp], r_orient[should_fix_hyp]),
+                        )
+                        e_align = e_align / np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                        to_fix = is_outside.copy()
+                        to_fix[to_fix] *= should_fix_hyp   # to fix = outside & angle < np.pi/2
+                        self.o[to_fix] = e_align
+                    # fix the particles that exceeds the cap
+                    if np.sum(should_fix_cap) > 0:
+                        e_align = v_orient[should_fix_cap].copy()
+                        e_align[:, -1] = 0
+                        e_align /= np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                        to_fix = is_outside.copy()
+                        to_fix[to_fix] *= should_fix_cap   # to fix = outside & angle < np.pi/2
+                        self.o[to_fix] = e_align
+                    # update the velocity
+                    self.v[is_outside] = self.o[is_outside] * v_mag[:, np.newaxis]
+                else:
+                    raise ValueError("Only 2D and 3D systems are supported")
+        return SystemAFB
+
 
     if condition == "pbc":
         return pbc_decorator
@@ -589,6 +757,8 @@ def Boundary(condition):
         return align_sphere
     elif condition == "align_half_sphere":
         return align_half_sphere
+    elif condition == "align_fish_bowl":
+        return align_fish_bowl
     else:
         return lambda x: x
 
