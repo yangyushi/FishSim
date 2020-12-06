@@ -802,6 +802,7 @@ class Vicsek3D(BD):
     Vicsek Model Simulation in 3D
     """
     def __init__(self, N, eta, v0, r0, **kwargs):
+        kwargs.update({'m': 1, 'D': 1, 'kT': 1})  # meaningless in Vicsek Model
         BD.__init__(self, N, dim=3, dt=1, **kwargs)
         self.v0 = v0  # speed
         self.r0 = r0  # interaction range
@@ -1034,12 +1035,63 @@ class Lavergne_2019_Science(ABP2D):
         self.r += self.D / self.kT * self.f * self.dt  # force
         self.r += np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
         # Re-orient
+        self.phi -= target * self.is_active
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
         self.phi = self.phi % (2 * np.pi)
         self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
         self.v = self.o * self.v0
         self.fix_boundary()
         self.notify()
+
+
+class Vision3D(ABP3D):
+    def __init__(self, N, dt, Pe, alpha, R0=24, **kwargs):
+        """
+        Args:
+            N (int): the number of particles
+            Pe (float): The Péclet number
+            alpha (float): the vision cone range, from 0 to π
+        """
+        ABP3D.__init__(self, N, dt, Pe, **kwargs)
+        self.alpha = alpha
+        xy = np.random.randn(self.dim, self.N)
+        r = np.linalg.norm(xy, axis=0)
+        l = np.random.uniform(0, R0**2, self.N) ** (1 / self.dim)
+        self.r = (xy / r * l).T
+        self.is_active = np.ones(self.N, dtype=bool)
+        self.p_act = 0
+
+
+    def move_overdamp(self):
+        perception, target = self.get_perception()
+        self.is_active =  perception > self.p_act
+        # active
+        self.r += self.v * self.dt
+        # Brownian (No translational diffusion)
+        self.get_force()
+        self.r += self.D / self.kT * self.f * self.dt  # force
+        # Re-orient (Orientational diffusion)
+        self.o[self.is_active] = target[self.is_active]
+        self.rot_diffuse()
+        self.v = self.o * self.v0
+        self.fix_boundary()
+        self.notify()
+
+    def get_perception(self):
+        rij = self.get_pair_shift()  # 3, N, N
+        dist = np.linalg.norm(rij, axis=0)  # N, N
+        np.fill_diagonal(dist, np.inf)
+        eij = rij / dist[np.newaxis, :, :]  # 3, N, N
+        # self.o boardcast to 3, N, N; should sum over rows
+        oi = self.o.T[:, np.newaxis, :] * np.ones((1, self.N, 1))  # 3, N, N
+        angle_diff = np.arccos(np.einsum('ijk,ijk->jk', eij, oi))  # N, N
+        angle_diff_ij = angle_diff.copy()
+        np.fill_diagonal(angle_diff_ij, np.inf)
+        min_diff = np.argmin(angle_diff_ij, axis=0)
+        target = eij[:, min_diff, np.arange(self.N)].T  # N, 3
+        adj_mat = np.abs(angle_diff) < self.alpha
+        np.fill_diagonal(adj_mat, 0)
+        return np.sum(adj_mat / dist, axis=0) / (2 * np.pi), target
 
 
 class Vision(Lavergne_2019_Science):
@@ -1077,8 +1129,8 @@ class Vision(Lavergne_2019_Science):
         neighbour_num = adj_mat.sum(axis=0)
         target = (angle_diff * adj_mat).sum(axis=0) / neighbour_num
         target[neighbour_num==0]=0
-        close = np.argmin(np.abs(angle_diff), axis=0)[None, :]
-        target = np.take_along_axis(angle_diff, close, axis=0).ravel()
+        close = np.argmin(np.abs(angle_diff), axis=0)
+        target = angle_diff[close, np.arange(self.N)]
         return np.sum(adj_mat / dist, axis=0) / (2 * np.pi), target
 
 
