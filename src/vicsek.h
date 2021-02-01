@@ -411,7 +411,7 @@ template<class T>
 Conn get_connections_pbc(T& positions, double rc, double box){
     Conn connections;
     double rc2 = rc * rc;
-    double half_box_2 = box * box / 4;
+    double half_box = box / 2;
     for (int i=0; i<positions.cols(); i++){
         connections.push_back(vector<int>{});
     }
@@ -421,7 +421,7 @@ Conn get_connections_pbc(T& positions, double rc, double box){
             double dist_nd_2 = 0;
             for (auto shift_1d : (positions.col(i) - positions.col(j))){
                 double dist_1d = abs(shift_1d);
-                if (dist_1d > half_box_2){
+                if (dist_1d > half_box){
                     dist_nd_2 += pow(box - dist_1d, 2);
                 } else {
                     dist_nd_2 += pow(dist_1d, 2);
