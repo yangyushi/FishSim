@@ -256,6 +256,7 @@ void CellList3D::get_dmat(Coord3D& positions, DistMat& dist_mat){
 }
 
 
+
 void CellList3D::get_cmat(Coord3D& positions, ConnMat& conn_mat){
     conn_mat.setZero();
 

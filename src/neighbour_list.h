@@ -115,7 +115,7 @@ void VerletList<T>::get_dmat(const T& positions, DistMat& dist_mat){
         double dist2 = 0;
         for (int j = p0; j < point_[i+1]; j++){
             idx_j = nlist_[j];
-            dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
             if (dist2 < rc2_){
                 dist_mat(i, idx_j) = sqrt(dist2);
             }

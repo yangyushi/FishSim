@@ -88,7 +88,6 @@ const char* docstring_vicsek_3d_pbc =\
     ;
 
 
-
 const char* docstring_attanasi2014pcb =\
     "3D Vicsek simulation in paper 10.1371/journal.pcbi.1003697\n"\
     "(scalar noise + harmonic motion in 3D)\n"\
@@ -816,7 +815,6 @@ PYBIND11_MODULE(csimulate, m){
         py::arg("n"), py::arg("box"), py::arg("eta"), py::arg("v0"), py::arg("r"),
         py::arg("run_steps"), py::arg("positions"), py::arg("velocities"),
         py::arg("jump")=1, py::arg("use_nl")=false
-
     );
 
     m.def(
