@@ -723,7 +723,7 @@ py::array_t<double> ism_3d_pbc(
 }
 
 
-PYBIND11_MODULE(csimulate, m){
+PYBIND11_MODULE(cfish_sim, m){
     m.doc() = "Simulating different models to understand the collective behaviours";
 
     m.def(

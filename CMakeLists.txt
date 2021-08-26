@@ -28,9 +28,11 @@ add_library(vicsek STATIC src/vicsek.cpp src/vicsek.h)
 target_link_libraries(vicsek Eigen3::Eigen)
 
 # build the python module
-add_library(cfish_sim MODULE src/csimulate.cpp)
-
-target_link_libraries(cfish_sim PRIVATE pybind11::module pybind11::lto Eigen3::Eigen neighbour_list network vicsek)
+add_library(cfish_sim MODULE src/cfish_sim.cpp)
+target_link_libraries(
+    cfish_sim PRIVATE pybind11::module pybind11::lto
+    Eigen3::Eigen neighbour_list network vicsek
+    )
 pybind11_extension(cfish_sim)
 set_target_properties(cfish_sim PROPERTIES CXX_VISIBILITY_PRESET "hidden")
 

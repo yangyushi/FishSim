@@ -5,7 +5,7 @@ sys.path.append('../lib')
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-import csimulate
+import fish_sim as fs
 
 
 N = 500
@@ -20,7 +20,7 @@ orders = []
 t_cpp = 0
 for noise in noises:
     t0 = time.time()
-    result = csimulate.vicsek_3d_pbc(N, box, noise, spd, r, 1000, 1000)  # (T, n, 6)
+    result = fs.csimulate.vicsek_3d_pbc(N, box, noise, spd, r, 1000, 1000)  # (T, n, 6)
     t_cpp += time.time() - t0
     order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(-1)).mean()
     orders.append(order / spd)
