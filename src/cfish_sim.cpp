@@ -850,4 +850,16 @@ PYBIND11_MODULE(cfish_sim, m){
         py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file=")="",
         py::arg("use_nl")=false
     );
+
+    py::class_<Network3D>(m, "Network3D")
+        .def(
+            py::init<
+                int, int, double
+            >()
+        )
+        .def("move", &Network3D::move)
+        .def("evolve", &Network3D::evolve)
+        .def("get_polarisaion", &Network3D::get_polarisation)
+        .def("get_velocities", &Network3D::get_velocities)
+        .def("load_velocities", &Network3D::load_velocities);
 }

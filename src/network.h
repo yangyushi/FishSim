@@ -17,7 +17,8 @@ class Network3D : public Vicsek3D{
     public:
         Network3D(int n, int k, double eta);
         void random_align();
-        void move(bool rebuild);
+        void move();
+        void evolve(int steps);
 };
 
 
