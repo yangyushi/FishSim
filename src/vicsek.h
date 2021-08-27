@@ -40,6 +40,13 @@ class Vicsek3D{
         Vicsek3D(int n, double r, double eta, double v0);
         void move(bool rebuild);
         void move();  // without neighbour list
+
+        // for interact with python
+        Coord3D& get_positions() { return positions_; };
+        Coord3D& get_velocities() { return velocities_; };
+        void load_positions(Coord3D);
+        void load_velocities(Coord3D);
+        double get_polarisation() { return velocities_.rowwise().sum().norm(); };
 };
 
 

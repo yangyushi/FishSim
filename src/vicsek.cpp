@@ -80,6 +80,18 @@ Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
     }
 
 
+void Vicsek3D::load_positions(Coord3D positions) {
+    this->positions_ = positions;
+    verlet_list_.build(this->positions_);
+};
+
+
+void Vicsek3D::load_velocities(Coord3D velocities) {
+    this->velocities_ = velocities;
+    normalise(this->velocities_, speed_);
+};
+
+
 void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
     /*
     * Rotate nosie pointing at (0, 0, 1) to direction xyz 
@@ -156,30 +168,24 @@ void Vicsek3D::rotate_noise_fast(Coord3D& noise_xyz){
     * and then add noise_xyz to velocities
     * here velocities have unit norm
     */
+
     RotMat R1, R2, R;
     Vec3D A, B, v;
     double c;
+
     for (int i = 0; i < n_; i++){
         A << 0, 0, 1;
         B << velocities_.col(i);
-        if ((A - B).norm() < 1e-10){ // B close to (0, 0, 1)
-            velocities_.col(i) = noise_xyz.col(i);  // R -> I
-        } else if ((A + B).norm() < 1e-10){  // B close to (0, 0, -1)
-            velocities_.col(i) << noise_xyz(0, i),  // R -> rotate to (0, 0, -1)
-                                  noise_xyz(1, i),
-                                - noise_xyz(2, i);
-        } else {
-            v = A.cross(B);  // w = A cross B
-            c = A.dot(B);  // A dot B
-            R1 << 0, -v[2], v[1], // the skew-symmetric matrix
-                  v[2], 0, -v[0],
-                 -v[1], v[0], 0;
-            R << 1, 0, 0,
-                 0, 1, 0,
-                 0, 0, 1; 
-            R = R + R1 + (R1 * R1) / (1 + c);
-            velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
-        }
+        v = A.cross(B);  // w = A cross B
+        c = A.dot(B);  // A dot B
+        R1 << 0, -v[2], v[1], // the skew-symmetric matrix
+              v[2], 0, -v[0],
+             -v[1], v[0], 0;
+        R << 1, 0, 0,
+             0, 1, 0,
+             0, 0, 1; 
+        R = R + R1 + (R1 * R1) / (1 + c);
+        velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
     }
 }
 
@@ -190,6 +196,7 @@ void Vicsek3D::add_noise(){
 
     uniform_real_distribution<> dist_phi(-PI, PI);
     uniform_real_distribution<> dist_z(1 - 2 * noise_, 1);
+
     auto rand_phi = [&] (double) {return dist_phi(generator);};
     auto rand_z = [&] (double) {return dist_z(generator);};
 
@@ -200,7 +207,7 @@ void Vicsek3D::add_noise(){
     noise_xyz.row(0) = noise_rxy * cos(noise_phi);
     noise_xyz.row(1) = noise_rxy * sin(noise_phi);
 
-    rotate_noise_fast(noise_xyz);
+    rotate_noise(noise_xyz);
 }
 
 
