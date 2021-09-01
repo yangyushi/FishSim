@@ -4,7 +4,7 @@ This is a collection of simulation code I wrote for my PhD project in the univer
 
 ## Dependency
 
-You need to have C++ compilers, [CMake](), [Eigen](), [pybind11](https://github.com/pybind/pybind11) to build the C++ source code.
+You need to have a C++ compiler and CMake to build the C++ source code.
 
 The Python module requires the following packages: `numpy`, `matplotlib`, `scipy`, and `numba`.
 
@@ -13,6 +13,8 @@ The Python module requires the following packages: `numpy`, `matplotlib`, `scipy
 the following command will build the package.
 
 ```sh
+git submodule update --init  # download the Eigen & pybind11
+
 mkdir build
 cd build
 cmake ..
