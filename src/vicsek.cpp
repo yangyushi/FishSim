@@ -1,6 +1,6 @@
-#include "vicsek.h"
+#include "vicsek.hpp"
 
-default_random_engine generator;
+std::default_random_engine generator;
 
 
 Coord3D xyz_to_sphere(Coord3D& xyz){
@@ -194,8 +194,8 @@ void Vicsek3D::add_noise(){
     Property noise_rxy{1, n_}, noise_phi{1, n_};
     Coord3D noise_xyz{3, n_};
 
-    uniform_real_distribution<> dist_phi(-PI, PI);
-    uniform_real_distribution<> dist_z(1 - 2 * noise_, 1);
+    std::uniform_real_distribution<> dist_phi(-PI, PI);
+    std::uniform_real_distribution<> dist_z(1 - 2 * noise_, 1);
 
     auto rand_phi = [&] (double) {return dist_phi(generator);};
     auto rand_z = [&] (double) {return dist_z(generator);};
@@ -685,9 +685,9 @@ void InertialSpin3D::add_alignment(){
 
 void InertialSpin3D::add_noise(){
     Vec3D noise;
-    random_device rd{};
-    mt19937 gen{rd()};
-    normal_distribution<float> d{0, 1};
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<float> d{0, 1};
     for (int i = 0; i < n_; i++){
         noise << d(gen), d(gen), d(gen);
         spins_.col(i) = exp(-friction_ / mass_) * spins_.col(i) +\
@@ -701,9 +701,9 @@ void InertialSpin3D::update_spin(){
     Vec3D noise;
     Vec3D velocity_sum;
     double sigma = 2 * 3 * friction_ * T_;
-    random_device rd{};
-    mt19937 gen{rd()};
-    normal_distribution<double> d{0, sigma};
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<double> d{0, sigma};
     for (int i = 0; i < n_; i++){
         velocity_sum.setZero();
         noise << d(gen), d(gen), d(gen);

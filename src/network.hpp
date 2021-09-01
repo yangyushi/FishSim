@@ -2,17 +2,17 @@
 #define NETWORK
 
 #include <vector>
-#include <array>
-#include <map>
-#include <algorithm>
 #include <Eigen/Dense>
-#include "vicsek.h"
-#include "neighbour_list.h"
+#include "vicsek.hpp"
+#include "neighbour_list.hpp"
 
+/*
+ * The vectorial network model introduced by Aldana and Huepe in 2003
+ */
 class Network3D : public Vicsek3D{
     protected:
         int k_; // connection number 
-        vector<int> indices_;
+        std::vector<int> indices_;
 
     public:
         Network3D(int n, int k, double eta);
@@ -21,5 +21,7 @@ class Network3D : public Vicsek3D{
         void evolve(int steps);
 };
 
+class TCNetwork3D : public Network3D{
+};
 
 #endif

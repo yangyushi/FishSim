@@ -1,4 +1,4 @@
-#include "neighbour_list.h"
+#include "neighbour_list.hpp"
 
 
 Index3D unravel_index(int index, Index3D shape){
@@ -361,7 +361,7 @@ Indices3D CellList3D::get_neighbours_indices(const Index3D& cell_idx){
 Conn CellList3D::get_conn(Coord3D& positions){
     Conn connections{};
     for (int i = 0; i < positions.cols(); i++){
-        connections.push_back(vector<int>{});
+        connections.push_back(std::vector<int>{});
     }
 
     CellIndices3D ci = get_cell_indices(positions);
@@ -660,7 +660,7 @@ void CellList2D::get_cmat(Coord2D& positions, ConnMat& conn_mat){
 Conn CellList2D::get_conn(Coord2D& positions){
     Conn connections;
     for (int i = 0; i < positions.cols(); i++){
-        connections.push_back(vector<int>{});
+        connections.push_back(std::vector<int>{});
     }
 
     double rc2 = rc * rc;

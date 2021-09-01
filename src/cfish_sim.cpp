@@ -1,6 +1,6 @@
-#include "vicsek.h"
-#include "network.h"
-#include "neighbour_list.h"
+#include "vicsek.hpp"
+#include "network.hpp"
+#include "neighbour_list.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
@@ -234,7 +234,7 @@ int get_update_step(double r, double v0){
 template<class T>
 py::array_t<double> simulate(
         T system, int update_step, int pre_steps, int run_steps, int jump,
-        string load_file, string dump_file
+        std::string load_file, std::string dump_file
         ){
     int dim = system.positions_.rows();
     const int offset_frame = 2 * dim * system.n_;  // size of each frame
@@ -297,7 +297,7 @@ py::array_t<double> simulate(
 template<class T>
 py::array_t<double> simulate_no_nl(
         T system, int pre_steps, int run_steps, int jump,
-        string load_file, string dump_file
+        std::string load_file, std::string dump_file
         ){
     int dim = system.positions_.rows();
     const int offset_frame = 2 * dim * system.n_;  // size of each frame
@@ -424,7 +424,7 @@ py::array_t<double> run_no_nl(T system, int run_steps, int jump){
 py::array_t<double> vicsek_3d_pbc(
         int n, double box, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Vicsek3DPBC system{n, r, eta, box, v0};
@@ -461,7 +461,7 @@ py::array_t<double> continue_vicsek_3d_pbc(
 py::array_t<double> vicsek_3d(
         int n, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Vicsek3D system{n, r, eta, v0};
@@ -498,7 +498,7 @@ py::array_t<double> continue_vicsek_3d(
 py::array_t<double> vicsek_2d(
         int n, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Vicsek2D system{n, r, eta, v0};
@@ -536,7 +536,7 @@ py::array_t<double> continue_vicsek_2d(
 py::array_t<double> vicsek_3d_pbc_inertia(
         int n, double box, double eta, double v0, double r, double alpha,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Vicsek3DPBCInertia system{n, r, eta, box, v0, alpha};
@@ -558,7 +558,7 @@ py::array_t<double> vicsek_3d_pbc_inertia(
 py::array_t<double> vicsek_3d_pbc_inertia_af(
         int n, double box, double eta, double v0, double r, double alpha,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Vicsek3DPBCInertiaAF system{n, r, eta, box, v0, alpha};
@@ -580,7 +580,7 @@ py::array_t<double> vicsek_3d_pbc_inertia_af(
 py::array_t<double> attanasi2014pcb(
         int n, double eta, double v0, double b, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Attanasi2014PCB system{n, r, eta, v0, b};
@@ -602,7 +602,7 @@ py::array_t<double> attanasi2014pcb(
 py::array_t<double> vicsek_2d_pbc(
         int n, double box, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Vicsek2DPBC system{n, r, eta, box, v0};
@@ -641,7 +641,7 @@ py::array_t<double> continue_vicsek_2d_pbc(
 py::array_t<double> vicsek_2d_pbc_vn(
         int n, double box, double eta, double v0, double r,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     Vicsek2DPBCVN system{n, r, eta, box, v0};
@@ -681,7 +681,7 @@ py::array_t<double> ism_3d(
         int n, double r, double v0,
         double T, double j, double m, double f,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     InertialSpin3D system{n, r, v0, T, j, m, f};
@@ -704,7 +704,7 @@ py::array_t<double> ism_3d_pbc(
         int n, double box, double r, double v0,
         double T, double j, double m, double f,
         int pre_steps, int run_steps, int jump=1,
-        string load_file="", string dump_file="",
+        std::string load_file="", std::string dump_file="",
         bool use_nl=false
         ){
     InertialSpin3DPBC system{n, box, r, v0, T, j, m, f};

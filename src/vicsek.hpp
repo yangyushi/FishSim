@@ -10,11 +10,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <Eigen/LU>
-#include "neighbour_list.h"
+#include "neighbour_list.hpp"
 
 const double PI = 3.141592653589793238463;
-
-using namespace std;
 
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
@@ -46,7 +44,7 @@ class Vicsek3D{
         Coord3D& get_velocities() { return velocities_; };
         void load_positions(Coord3D);
         void load_velocities(Coord3D);
-        double get_polarisation() { return velocities_.rowwise().sum().norm(); };
+        double get_polarisation() { return velocities_.rowwise().sum().norm() / speed_ / n_; };
 };
 
 
@@ -181,12 +179,12 @@ Coord3D sphere_to_xyz(Coord3D& sphere);
  * it works with both 2D and 3D system
  */
 template<class T>
-void dump(T system, string filename){
-    ofstream f;
-    f.open(filename, ios::out | ios::app);
-    f << system.n_ << endl;
+void dump(T system, std::string filename){
+    std::ofstream f;
+    f.open(filename, std::ios::out | std::ios::app);
+    f << system.n_ << std::endl;
     if (system.positions_.rows() == 3){
-        f << "id, x, y, z, vx, vy, vz" << endl;
+        f << "id, x, y, z, vx, vy, vz" << std::endl;
         for (int i = 0; i < system.n_; i++ ) {
             f << i << " "
                 << system.positions_(0, i)  << " "
@@ -194,16 +192,16 @@ void dump(T system, string filename){
                 << system.positions_(2, i)  << " "
                 << system.velocities_(0, i) << " "
                 << system.velocities_(1, i) << " "
-                << system.velocities_(2, i) << endl;
+                << system.velocities_(2, i) << std::endl;
         }
     } else if (system.positions_.rows() == 2){
-        f << "id, x, y, vx, vy" << endl;
+        f << "id, x, y, vx, vy" << std::endl;
         for (int i = 0; i < system.n_; i++ ) {
             f << i << " "
               << system.positions_(0, i)  << " "
               << system.positions_(1, i)  << " "
               << system.velocities_(0, i) << " "
-              << system.velocities_(1, i) << " " << endl;
+              << system.velocities_(1, i) << " " << std::endl;
         }
     } else {
         throw("invalid dimension");
@@ -218,18 +216,18 @@ void dump(T system, string filename){
  * The xyz file should be generated with the `dump` function
  */
 template<class T>
-void load(T system, string filename){
-    ifstream f;
-    string line;
-    regex head_pattern{"\\d+"};
-    smatch matched;
+void load(T system, std::string filename){
+    std::ifstream f;
+    std::string line;
+    std::regex head_pattern{"\\d+"};
+    std::smatch matched;
     int head_lines = 2;
-    string num;
+    std::string num;
     int N = 0;
     int total_frame = 0;
     
     // find total number of frames
-    f.open(filename, ios::in);
+    f.open(filename, std::ios::in);
     while (f) {
         getline(f, line);
         if (regex_match(line, matched, head_pattern)){
@@ -241,7 +239,7 @@ void load(T system, string filename){
     f.close();
     
     // jump to the last frame 
-    f.open(filename, ios::in);
+    f.open(filename, std::ios::in);
     for (int i = 0; i < total_frame - 1; i++){
         for (int j = 0; j < N + head_lines; j++){
         getline(f, line);
@@ -253,7 +251,7 @@ void load(T system, string filename){
         for (int i = 0; i < N + head_lines; i++){
             getline(f, line);
             if (i > 1) {
-                istringstream ss(line);
+                std::istringstream ss(line);
                 ss >> num;
                 for (int j = 0; j < 3; j++){
                     ss >> system.positions_(j, i - head_lines);
@@ -268,7 +266,7 @@ void load(T system, string filename){
             getline(f, line);
             
             if (i > 1) {
-                istringstream ss(line);
+                std::istringstream ss(line);
                 ss >> num;
                 for (int j = 0; j < 2; j++){
                     ss >> system.positions_(j, i - head_lines);
@@ -355,8 +353,8 @@ class InertialSpin3DPBC : public InertialSpin3D {
 
 
 template <typename T>
-vector<int> argsort(const vector<T> &v) {
-    vector<int> idx(v.size());
+std::vector<int> argsort(const std::vector<T> &v) {
+    std::vector<int> idx(v.size());
     iota(idx.begin(), idx.end(), 0);
     stable_sort(
             idx.begin(), idx.end(),
@@ -372,17 +370,17 @@ vector<int> argsort(const vector<T> &v) {
 template<class T>
 Conn get_topology_connections(T positions, int nc){
     Conn connections;
-    vector<int> sorted_indices;
+    std::vector<int> sorted_indices;
     int n_total = positions.cols();
     for (int i = 0; i < n_total; i++){
-        vector<double> squared_distances {};
+        std::vector<double> squared_distances {};
         for (int j = 0; j < n_total; j++){
             squared_distances.push_back(
                    (positions.col(i) - positions.col(j)).squaredNorm()
                    );
         }
         sorted_indices = argsort(squared_distances);
-        connections.push_back(vector<int> {
+        connections.push_back(std::vector<int> {
                 sorted_indices.begin(), sorted_indices.begin() + nc
                 });
     }
@@ -398,7 +396,7 @@ Conn get_connections(T& positions, double rc){
     Conn connections;
     double rc2 = rc * rc;
     for (int i=0; i<positions.cols(); i++){
-        connections.push_back(vector<int>{});
+        connections.push_back(std::vector<int>{});
     }
     #pragma omp parallel for
     for (int i=0; i<positions.cols(); i++){
@@ -420,7 +418,7 @@ Conn get_connections_pbc(T& positions, double rc, double box){
     double rc2 = rc * rc;
     double half_box = box / 2;
     for (int i=0; i<positions.cols(); i++){
-        connections.push_back(vector<int>{});
+        connections.push_back(std::vector<int>{});
     }
     #pragma omp parallel for
     for (int i=0; i<positions.cols(); i++){

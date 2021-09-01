@@ -39,7 +39,6 @@ def force_lj(rij):
     lap  = (22.0 * sr12 - 5.0 * sr6) * sr2  # shape (N, N)
     f    = np.sum(f, axis=2).T * 24   # sum over columns of the displacement matrix
 
-
     interest = {
         "potential": np.sum(pot)  * 2.0,    # 4 / 2, because (ij - ji) double counted
         "virial":    np.sum(vir)  * 4.0,    # 24 / 3 / 2

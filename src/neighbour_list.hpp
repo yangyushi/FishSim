@@ -6,25 +6,23 @@
 #include <iostream>
 #include <Eigen/Dense>
 
-using namespace std;
-
-using Conn = vector< vector <int> >;
+using Conn = std::vector< std::vector <int> >;
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
 using ConnMat = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
-using Indices = vector< int >;  // size is n
-using Neighbours = vector< Indices >;
+using Indices = std::vector< int >;  // size is n
+using Neighbours = std::vector< Indices >;
 
 using Coord3D = Eigen::Matrix<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
 using CellIndices3D = Eigen::Array<int, 3, Eigen::Dynamic, Eigen::RowMajor>; // (3, n)
-using Index3D = array<int, 3>;  // size is 3
-using Indices3D = vector< Index3D >;
-using Head3D = map<Index3D, int>;
+using Index3D = std::array<int, 3>;  // size is 3
+using Indices3D = std::vector< Index3D >;
+using Head3D = std::map<Index3D, int>;
 
 using Coord2D = Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::RowMajor>;  // (2, n)
 using CellIndices2D = Eigen::Array<int, 2, Eigen::Dynamic, Eigen::RowMajor>; // (2, n)
-using Index2D = array<int, 2>;  // size is 3
-using Indices2D = vector< Index2D >;
-using Head2D = map<Index2D, int>;
+using Index2D = std::array<int, 2>;  // size is 3
+using Indices2D = std::vector< Index2D >;
+using Head2D = std::map<Index2D, int>;
 
 using RotMat = Eigen::Matrix3d;
 using Vec2D = Eigen::Matrix<double, 2, 1>;  // (2, 1)
@@ -53,14 +51,14 @@ class VerletList{
         double rc2_;
         double rl_;
         double rl2_;
-        vector<int> nlist_;
-        vector<int> point_;
+        std::vector<int> nlist_;
+        std::vector<int> point_;
         int point_size_ = 0;  // particle number + 1, point_.size()
         int size_ = 0;  // particle number
         Conn get_blank_connections(){
             Conn connections{};
             for (int i = 0; i < size_; i++){
-                connections.push_back(vector<int>{});
+                connections.push_back(std::vector<int>{});
             }
             return connections;
         }

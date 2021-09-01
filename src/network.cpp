@@ -1,7 +1,7 @@
-#include "network.h"
+#include "network.hpp"
 
-random_device rd;
-mt19937 g(rd());
+std::random_device rd;
+std::mt19937 g(rd());
 
 
 Network3D::Network3D(int n, int k, double eta)

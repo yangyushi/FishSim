@@ -1,5 +1,5 @@
-#include "network.h"
-#include "vicsek.h"
+#include "network.hpp"
+#include "vicsek.hpp"
 #include <chrono>
 
 int main(){
@@ -13,23 +13,23 @@ int main(){
     };
     dump(system, "test.xyz");
 
-    cout << "system created" << endl;
+    std::cout << "system created" << std::endl;
 
-    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for (int step=0; step < total_steps; step++){
         system.move();
         if (step % jump == 0) dump(system, "test.xyz");
     }
-    chrono::steady_clock::time_point end = chrono::steady_clock::now();
-    cout << "Time spent without neighbour list: "
-         << chrono::duration_cast<chrono::milliseconds>(end - begin).count()
-         << "[ms]" << endl;
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "Time spent without neighbour list: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()
+         << "[ms]" << std::endl;
 
-    cout << "movement works" << endl;
+    std::cout << "movement works" << std::endl;
 
     load(system, "test.xyz");
 
-    begin = chrono::steady_clock::now();
+    begin = std::chrono::steady_clock::now();
     for (int step=0; step < total_steps; step++){
         if (step % update_step == 0){
             system.move(true);
@@ -39,9 +39,9 @@ int main(){
         }
         if (step % jump == 0) dump(system, "test.xyz");
     }
-    end = chrono::steady_clock::now();
-    cout << "Time spent without neighbour list: "
-         << chrono::duration_cast<chrono::milliseconds>(end - begin).count()
-         << "[ms]" << endl;
+    end = std::chrono::steady_clock::now();
+    std::cout << "Time spent without neighbour list: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()
+         << "[ms]" << std::endl;
     return 0;
 }
