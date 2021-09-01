@@ -7,7 +7,8 @@ project(
     )
 
 find_package(OpenMP)
-add_subdirectory(extern/pybind11 REQUIRED)
+add_subdirectory(extern/pybind11)
+set(Eigen3_DIR "extern/eigen3/cmake")
 find_package(Eigen3 3.3 REQUIRED)
 
 # setup usual compile flag
@@ -42,7 +43,8 @@ endif()
 add_library(cfish_sim MODULE src/cfish_sim.cpp)
 target_link_libraries(
     cfish_sim PRIVATE pybind11::module pybind11::lto
-    Eigen3::Eigen neighbour_list network vicsek
+    Eigen3::Eigen
+    neighbour_list network vicsek
     )
 pybind11_extension(cfish_sim)
 set_target_properties(cfish_sim PROPERTIES CXX_VISIBILITY_PRESET "hidden")
