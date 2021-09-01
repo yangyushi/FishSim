@@ -5,8 +5,9 @@ project(
     cfish_sim VERSION 0.0
     DESCRIPTION "simulate the collective behaviour of fish as active matter"
     )
+
 find_package(OpenMP)
-find_package(pybind11 REQUIRED)
+add_subdirectory(extern/pybind11 REQUIRED)
 find_package(Eigen3 3.3 REQUIRED)
 
 # setup usual compile flag
@@ -21,15 +22,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
-
 # build the cpp targets
-add_library(neighbour_list STATIC src/neighbour_list.cpp src/neighbour_list.h)
+add_library(neighbour_list STATIC src/neighbour_list.cpp src/neighbour_list.hpp)
 target_link_libraries(neighbour_list Eigen3::Eigen)
 
-add_library(network STATIC src/network.cpp src/network.h)
+add_library(network STATIC src/network.cpp src/network.hpp)
 target_link_libraries(network Eigen3::Eigen)
 
-add_library(vicsek STATIC src/vicsek.cpp src/vicsek.h)
+add_library(vicsek STATIC src/vicsek.cpp src/vicsek.hpp)
 target_link_libraries(vicsek Eigen3::Eigen)
 
 if(OpenMP_CXX_FOUND)
