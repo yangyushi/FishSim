@@ -2,12 +2,12 @@ import pickle
 import numpy as np
 from itertools import product
 import matplotlib.pyplot as plt
-from force import force_lj, force_wca
 import matplotlib.animation as animation
-from noise_3d import add_vicsek_noise_3d
 from scipy.special import gamma as gamma_func
 from scipy.spatial.distance import pdist, cdist, squareform
 
+from .force import force_lj, force_wca
+from .noise_3d import add_vicsek_noise_3d
 
 class BD():
     """
