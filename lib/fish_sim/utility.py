@@ -2,15 +2,41 @@ import pickle
 import numpy as np
 from itertools import product
 import matplotlib.pyplot as plt
-from force import force_lj, force_wca
 import matplotlib.animation as animation
-from noise_3d import add_vicsek_noise_3d
 from scipy.special import gamma as gamma_func
 from scipy.spatial.distance import pdist, cdist, squareform
 
+from .noise_3d import add_vicsek_noise_3d
+from .force import force_lj, force_wca
+
+
+class FuncAnimationDisposable(animation.FuncAnimation):
+    def __init__(self, fig, func, **kwargs):
+        super().__init__(fig, func, **kwargs)
+
+    def _step(self, *args):
+        still_going = animation.Animation._step(self, *args)
+        if not still_going and self.repeat:
+            super()._init_draw()
+            self.frame_seq = self.new_frame_seq()
+            self.event_source.interval = self._repeat_delay
+            return True
+        elif (not still_going) and (not self.repeat):
+            plt.close()
+        else:
+            self.event_source.interval = self._interval
+            return still_going
+
+    def _stop(self, *args):
+        # On stop we disconnect all of our events.
+        if self._blit:
+            self._fig.canvas.mpl_disconnect(self._resize_id)
+        self._fig.canvas.mpl_disconnect(self._close_id)
+        self.event_source = None
+
 
 def animate(system, r=100, jump=100, box=None,
-            save='', fps=60, show=False, frames=100):
+            save='', fps=60, show=False, frames=100, repeat=False):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     if system.dim == 2:
         ax = fig.add_subplot()
@@ -47,6 +73,8 @@ def animate(system, r=100, jump=100, box=None,
     else:
         return NotImplementedError("Only 2D and 3D systems are Supported")
 
+    end_frame_num = frames - 1
+
     def update(num, system, scatter):
         for _ in range(jump):
             system.move()
@@ -55,14 +83,17 @@ def animate(system, r=100, jump=100, box=None,
             scatter.set_3d_properties(system.r.T[2])
         else:
             scatter.set_data(system.r.T)
+            if (num == end_frame_num) and not repeat:
+                raise StopIteration
         return scatter
 
     scatter = ax.plot(
         *system.r.T, color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
-    ani = animation.FuncAnimation(
-        fig, update, frames=frames, fargs=(system, scatter), interval=1
+    ani = FuncAnimationDisposable(
+        fig, update, frames=frames, fargs=(system, scatter), interval=1,
+        blit=False, repeat=repeat
     )
     if show:
         plt.show()
