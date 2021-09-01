@@ -11,6 +11,7 @@ __pycache__
 **/*.gif
 *.png
 *.pdf
+*.mp4
 README.html
 !**/.nojekyll
 !.gitignore
