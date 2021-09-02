@@ -23,6 +23,7 @@ class FuncAnimationDisposable(animation.FuncAnimation):
             return True
         elif (not still_going) and (not self.repeat):
             plt.close()
+            return False
         else:
             self.event_source.interval = self._interval
             return still_going
@@ -32,11 +33,12 @@ class FuncAnimationDisposable(animation.FuncAnimation):
         if self._blit:
             self._fig.canvas.mpl_disconnect(self._resize_id)
         self._fig.canvas.mpl_disconnect(self._close_id)
-        self.event_source = None
 
 
-def animate(system, r=100, jump=100, box=None,
-            save='', fps=60, show=False, frames=100, repeat=False):
+def animate(
+    system, r=100, jump=100, box=None, save='',
+        fps=60, show=False, frames=100, repeat=False, title=""
+):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     if system.dim == 2:
         ax = fig.add_subplot()
@@ -72,6 +74,7 @@ def animate(system, r=100, jump=100, box=None,
             ax.set_zlim(0, system.box)
     else:
         return NotImplementedError("Only 2D and 3D systems are Supported")
+    ax.set_title(title)
 
     end_frame_num = frames - 1
 
@@ -103,9 +106,12 @@ def animate(system, r=100, jump=100, box=None,
 
 def animate_active_2d(
         system, r=100, jump=100, box=None,
-        save='', fps=60, show=True, frames=100):
+        save='', fps=60, show=True, frames=100,
+        repeat=False, title=''
+):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     ax = fig.add_subplot()
+    ax.set_title(title)
     ax.set_xticks([])
     ax.set_yticks([])
     if not isinstance(box, type(None)):
@@ -124,12 +130,14 @@ def animate_active_2d(
     def update(num, system, scatter):
         for _ in range(jump):
             system.move()
-            scatter.set_data(system.r.T)
-            quiver.set_offsets(system.r)
-            quiver.set_UVC(
-                np.cos(system.phi),
-                np.sin(system.phi),
-            )
+        scatter.set_data(system.r.T)
+        quiver.set_offsets(system.r)
+        quiver.set_UVC(
+            np.cos(system.phi),
+            np.sin(system.phi),
+        )
+        if (num == frames - 1) and (not repeat):
+            raise StopIteration
         return scatter
 
     scatter = ax.plot(
@@ -140,8 +148,9 @@ def animate_active_2d(
         *system.r.T, np.cos(system.phi), np.sin(system.phi),
         pivot='mid', units='width', color='teal', zorder=5, scale=250/r,
     )
-    ani = animation.FuncAnimation(
-        fig, update, frames, fargs=(system, scatter), interval=1
+    ani = FuncAnimationDisposable(
+        fig, update, frames=frames, fargs=(system, scatter), interval=1,
+        blit=False, repeat=repeat
     )
     if show:
         plt.show()
@@ -188,14 +197,28 @@ class Thermodynamic(Observer):
          - virial         : the total virial
          - laplacian      : the total Laplacian
          - force_sq       : the total squared force
+
+    Attributes:
+        report (bool): if true, the information will be printed on-the-fly
+        result (dict): a collection of all calculation resuls. The elements\
+            are, `E/N`, `P`, `T_kinetic`, and\
+            `T_configuration`.
     """
-    def __init__(self, block):
+    def __init__(self, block, report=True):
         Observer.__init__(self, block)
         self.Ek = 0
         names = ('E/N cut&shifted', 'P cut&shifted', 'T Kinetic', 'T Config')
-        print('|'.join([f'{n.split(" ")[0]: ^20}' for n in names]))
-        print('|'.join([f'{n.split(" ")[1]: ^20}' for n in names]))
-        print('-' * (21 * len(names)))
+        self.report = report
+        self.result = {
+            'E/N': [],
+            'P': [],
+            'T_kinetic': [],
+            'T_configuration': [],
+        }
+        if self.report:
+            print('|'.join([f'{n.split(" ")[0]: ^20}' for n in names]))
+            print('|'.join([f'{n.split(" ")[1]: ^20}' for n in names]))
+            print('-' * (21 * len(names)))
 
     def aggregate(self, system):
         e_kin = np.mean(system.interest['kinetic']) / system.N
@@ -205,8 +228,42 @@ class Thermodynamic(Observer):
         t_con = np.mean(
             np.array(system.interest['force_sq']) / np.array(system.interest['laplacian'])
         )
-        quantities = (e_tot, press, t_kin, t_con)
-        print('|'.join([f'{val: ^20.4f}' for val in quantities]))
+        self.result['E/N'].append(e_tot)
+        self.result['P'].append(press)
+        self.result['T_kinetic'].append(t_kin)
+        self.result['T_configuration'].append(t_con)
+        if self.report:
+            quantities = (e_tot, press, t_kin, t_con)
+            print('|'.join([f'{val: ^20.4f}' for val in quantities]))
+
+
+class Dynamic(Observer):
+    def __init__(self, block, report=True):
+        Observer.__init__(self, block)
+        self.names = ['polarisation']
+        self.result_frames = {
+            'polarisation': np.empty(block),
+        }
+        self.result = {
+            'polarisation':[],
+        }
+        self.report = report
+        if self.report:
+            print('|'.join([f'{name: ^20}' for name in self.names]))
+            print('-' * (21 * len(self.names)))
+
+    def aggregate(self, system):
+        for key in self.result:
+            self.result[key].append(self.result_frames[key].mean())
+        if self.report:
+            print('|'.join([
+                f'{self.result[name][-1]: ^20.4f}' for name in self.names
+            ]))
+
+    def collect(self, system):
+        orient = system.v / np.linalg.norm(system.v, axis=1)[:, np.newaxis]
+        pol = np.linalg.norm(np.mean(orient, axis=0))
+        self.result_frames['polarisation'] = pol
 
 
 class DumpXYZ(Observer):
