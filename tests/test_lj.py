@@ -23,8 +23,13 @@ def test_lj():
 
     fs.utility.animate(
         system_lj, r=10, jump=2, show=True, frames=100, repeat=False,
+        title='LJ Fluid'
     )
 
+    tk = np.mean(obs.result['T_kinetic'])
+    tc = np.mean(obs.result['T_configuration'])
+
+    assert np.isclose(tk, tc, rtol=0.1)
 
 if __name__ == "__main__":
     test_lj()
