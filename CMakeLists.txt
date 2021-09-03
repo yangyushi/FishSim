@@ -31,7 +31,7 @@ add_library(network STATIC src/network.cpp src/network.hpp)
 target_link_libraries(network Eigen3::Eigen)
 
 add_library(vicsek STATIC src/vicsek.cpp src/vicsek.hpp)
-target_link_libraries(vicsek Eigen3::Eigen)
+target_link_libraries(vicsek Eigen3::Eigen neighbour_list)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(neighbour_list  OpenMP::OpenMP_CXX)
@@ -43,8 +43,7 @@ endif()
 add_library(cfish_sim MODULE src/cfish_sim.cpp)
 target_link_libraries(
     cfish_sim PRIVATE pybind11::module pybind11::lto
-    Eigen3::Eigen
-    neighbour_list network vicsek
+    neighbour_list network vicsek Eigen3::Eigen
     )
 pybind11_extension(cfish_sim)
 set_target_properties(cfish_sim PROPERTIES CXX_VISIBILITY_PRESET "hidden")
