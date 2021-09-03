@@ -727,7 +727,8 @@ InertialSpin3DTP::InertialSpin3DTP(
     : InertialSpin3D{n, 1, v0, T, j, m, f}, nc_{nc} { }
 
 
-void InertialSpin3DTP::move(bool rebuid){
+void InertialSpin3DTP::move(bool rebuild){
+    rebuild = false;
     connections_ = get_topology_connections(positions_, nc_);
     update_velocity_full();
     update_spin();

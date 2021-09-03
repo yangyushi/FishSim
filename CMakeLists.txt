@@ -15,10 +15,10 @@ find_package(Eigen3 3.3 REQUIRED)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-set(CMAKE_CXX_FLAGS_RELEASE "-fPIC")
 
-set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ standard to use")
+add_compile_options(-Wall -Wextra -Werror -O3 -fPIC)
+
+set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ standard to use")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -31,7 +31,7 @@ add_library(network STATIC src/network.cpp src/network.hpp)
 target_link_libraries(network Eigen3::Eigen)
 
 add_library(vicsek STATIC src/vicsek.cpp src/vicsek.hpp)
-target_link_libraries(vicsek Eigen3::Eigen neighbour_list)
+target_link_libraries(vicsek neighbour_list Eigen3::Eigen)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(neighbour_list  OpenMP::OpenMP_CXX)
