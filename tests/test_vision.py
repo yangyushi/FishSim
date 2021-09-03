@@ -19,7 +19,7 @@ system = model(
 system.move()
 
 fs.utility.animate_active_2d(
-    system, r=5, jump=100,
+    system, r=5, jump=1,
     box=(-120, 120), show=True, frames=100,
     title='vision'
 )

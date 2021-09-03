@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
-sys.path.append('../lib')
+sys.path.insert(0, '../lib')
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ orders = []
 t_cpp = 0
 for noise in noises:
     t0 = time.time()
-    result = fs.csimulate.vicsek_3d_pbc(N, box, noise, spd, r, 1000, 1000)  # (T, n, 6)
+    result = fs.cfish_sim.vicsek_3d_pbc(N, box, noise, spd, r, 1000, 1000, use_nl=True)  # (T, n, 6)
     t_cpp += time.time() - t0
     order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(-1)).mean()
     orders.append(order / spd)

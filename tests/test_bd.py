@@ -1,8 +1,7 @@
 import sys
-sys.path.append('../src')
-sys.path.append('src')
+sys.path.append('../lib')
 import numpy as np
-from fish_sim import BD
+from fish_sim.model import BD
 from numba import njit
 import matplotlib.pyplot as plt
 
@@ -50,7 +49,3 @@ def test_bd(plot=False):
         plt.legend()
         plt.tight_layout()
         plt.show()
-
-
-if __name__ == "__main__":
-    test_bd(plot=True)
