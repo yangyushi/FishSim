@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.10)
 project(
     cfish_sim VERSION 0.0
     DESCRIPTION "simulate the collective behaviour of fish as active matter"
-    )
+)
 
 find_package(OpenMP)
 add_subdirectory(extern/pybind11)
@@ -40,14 +40,14 @@ if(OpenMP_CXX_FOUND)
 endif()
 
 # build the python module
-add_library(cfish_sim MODULE src/cfish_sim.cpp)
+add_library(cmodel MODULE src/cmodel.cpp)
 target_link_libraries(
-    cfish_sim PRIVATE pybind11::module pybind11::lto
+    cmodel PRIVATE pybind11::module pybind11::lto
     neighbour_list network vicsek Eigen3::Eigen
     )
-pybind11_extension(cfish_sim)
-set_target_properties(cfish_sim PROPERTIES CXX_VISIBILITY_PRESET "hidden")
+pybind11_extension(cmodel)
+set_target_properties(cmodel PROPERTIES CXX_VISIBILITY_PRESET "hidden")
 
 # move the libraries to lib folder
 SET(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/lib/fish_sim)
-install(TARGETS cfish_sim DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(TARGETS cmodel DESTINATION ${CMAKE_INSTALL_PREFIX})

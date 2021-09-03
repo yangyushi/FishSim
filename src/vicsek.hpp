@@ -12,7 +12,6 @@
 #include <Eigen/LU>
 #include "neighbour_list.hpp"
 
-const double PI = 3.141592653589793238463;
 
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
@@ -32,19 +31,26 @@ class Vicsek3D{
 
     public:
         int n_;
+        const int ndim_ = 3;
         Coord3D positions_;
         Coord3D velocities_;
 
         Vicsek3D(int n, double r, double eta, double v0);
         void move(bool rebuild);
-        void move();  // without neighbour list
-
+        void move_no_nl();  // without neighbour list
+        inline void evolve(int steps, bool rebuild){
+            for (int s=0; s < steps; s++){
+                this->move(rebuild);
+            }
+        };
         // for interact with python
         Coord3D& get_positions() { return positions_; };
         Coord3D& get_velocities() { return velocities_; };
         void load_positions(Coord3D);
         void load_velocities(Coord3D);
-        double get_polarisation() { return velocities_.rowwise().sum().norm() / speed_ / n_; };
+        inline double get_polarisation() {
+            return velocities_.rowwise().sum().norm() / speed_ / n_;
+        };
 };
 
 
@@ -59,7 +65,7 @@ class Vicsek3DPBC : public Vicsek3D{
     public:
         Vicsek3DPBC(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -70,7 +76,7 @@ class Attanasi2014PCB : public Vicsek3D{
     public:
         Attanasi2014PCB(int n, double r, double eta, double v0, double beta);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -78,7 +84,7 @@ class Vicsek3DPBCVN : public Vicsek3DPBC{
     public:
         Vicsek3DPBCVN(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -88,7 +94,7 @@ class Vicsek3DPBCInertia : public Vicsek3DPBC{
         Coord3D old_velocities_;
         Vicsek3DPBCInertia(int n, double r, double eta, double box, double v0, double alpha);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -101,7 +107,7 @@ class Vicsek3DPBCInertiaAF : public Vicsek3DPBCInertia{
     public:
         Vicsek3DPBCInertiaAF(int n, double r, double eta, double box, double v0, double alpha);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -120,7 +126,7 @@ class Vicsek2D{
         Coord2D velocities_;
         Vicsek2D(int n, double r, double eta, double v0);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -137,7 +143,7 @@ class Vicsek2DPBC : public Vicsek2D{
         Vicsek2DPBC(int n, double r, double eta, double box, double v0);
         Vec2D get_shift(Vec2D p1, Vec2D p2);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -145,7 +151,7 @@ class Vicsek2DPBCVN : public Vicsek2DPBC{
     public:
         Vicsek2DPBCVN(int n, double r, double eta, double box, double v0);
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -166,7 +172,7 @@ class Vicsek2DPBCVNCO : public Vicsek2DPBC{
         // default cohesion parameter
         Vicsek2DPBCVNCO(int n, double r, double eta, double box, double v0);  
         void move(bool rebuild);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 
@@ -309,7 +315,7 @@ class InertialSpin3D{
             int n, double r, double v0, double T, double j, double m, double f
         );
         void move(bool rebuid);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
         void add_alignment();
         void add_noise();
         void update_velocity_half();
@@ -329,7 +335,6 @@ class InertialSpin3DTP : public InertialSpin3D {
             int n, int nc, double v0,
             double T, double j, double m, double f
         );
-        void move(bool build);  // fake method
         void move();  // without neighbour list
 };
 
@@ -348,7 +353,7 @@ class InertialSpin3DPBC : public InertialSpin3D {
             double T, double j, double m, double f
         );
         void move(bool rebuid);
-        void move();  // without neighbour list
+        void move_no_nl();  // without neighbour list
 };
 
 

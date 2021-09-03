@@ -1,3 +1,3 @@
-from . import cfish_sim
 from . import utility
+from . import cmodel
 from . import model

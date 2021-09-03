@@ -315,12 +315,12 @@ py::array_t<double> simulate_no_nl(
     auto *ptr_result = (double *) buffer_result.ptr;
 
     for (int step = 0; step < pre_steps; step++){
-        system.move();
+        system.move_no_nl();
     }
 
     int cursor = 0;
     for (int step = 0; step < run_steps * jump; step++){
-        system.move();
+        system.move_no_nl();
         if (step % jump == 0){
             for (int i = 0; i < system.n_; i++){
                 for (int d = 0; d < dim; d++){
@@ -401,7 +401,7 @@ py::array_t<double> run_no_nl(T system, int run_steps, int jump){
     auto *ptr_result = (double *) buffer_result.ptr;
     int cursor = 0;
     for (int step = 0; step < run_steps * jump; step++){
-        system.move();
+        system.move_no_nl();
         if (step % jump == 0){
             for (int i = 0; i < system.n_; i++){
                 for (int d = 0; d < dim; d++){
@@ -723,7 +723,7 @@ py::array_t<double> ism_3d_pbc(
 }
 
 
-PYBIND11_MODULE(cfish_sim, m){
+PYBIND11_MODULE(cmodel, m){
     m.doc() = "Simulating different models to understand the collective behaviours";
 
     m.def(
@@ -862,4 +862,41 @@ PYBIND11_MODULE(cfish_sim, m){
         .def("get_polarisaion", &Network3D::get_polarisation)
         .def("get_velocities", &Network3D::get_velocities)
         .def("load_velocities", &Network3D::load_velocities);
+
+    py::class_<Vicsek3D>(m, "Vicsek3D")
+        .def(
+            py::init<
+                int, double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("r"),
+            pybind11::arg("eta"),
+            pybind11::arg("v0")
+        )
+        .def("move", &Vicsek3D::move, py::arg("rebuild")=true)
+        .def("evolve", &Vicsek3D::evolve, py::arg("steps"), py::arg("rebuild")=true)
+        .def("get_polarisaion", &Vicsek3D::get_polarisation)
+        .def("get_velocities", &Vicsek3D::get_velocities)
+        .def("get_positions", &Vicsek3D::get_positions)
+        .def("load_velocities", &Vicsek3D::load_velocities)
+        .def_readonly("dim", &Vicsek3D::ndim_);
+
+    py::class_<Vicsek3DPBC>(m, "Vicsek3DPBC")
+        .def(
+            py::init<
+                int, double, double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("r"),
+            pybind11::arg("eta"),
+            pybind11::arg("box"),
+            pybind11::arg("v0")
+        )
+        .def("move", &Vicsek3DPBC::move, py::arg("rebuild")=true)
+        .def("evolve", &Vicsek3DPBC::evolve, py::arg("steps"), py::arg("rebuild")=true)
+        .def("get_polarisaion", &Vicsek3DPBC::get_polarisation)
+        .def("get_velocities", &Vicsek3DPBC::get_velocities)
+        .def("get_positions", &Vicsek3DPBC::get_positions)
+        .def("load_velocities", &Vicsek3DPBC::load_velocities)
+        .def_readonly("dim", &Vicsek3DPBC::ndim_);
 }

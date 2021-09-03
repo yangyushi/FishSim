@@ -1,5 +1,6 @@
 #include "vicsek.hpp"
 
+const double PI = 3.141592653589793238463;
 std::default_random_engine generator;
 
 
@@ -221,7 +222,7 @@ void Vicsek3D::move(bool rebuild){
 }
 
 
-void Vicsek3D::move(){
+void Vicsek3D::move_no_nl(){
     connections_ = get_connections(positions_, rc_);
     vicsek_align(velocities_, connections_);
     normalise(velocities_);
@@ -259,7 +260,7 @@ void Vicsek3DPBC::move(bool rebuild){
 }
 
 
-void Vicsek3DPBC::move(){
+void Vicsek3DPBC::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     vicsek_align(velocities_, connections_);
     normalise(velocities_);
@@ -291,7 +292,7 @@ void Vicsek3DPBCInertia::move(bool rebuild){
 }
 
 
-void Vicsek3DPBCInertia::move(){
+void Vicsek3DPBCInertia::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     old_velocities_ << velocities_;
     vicsek_align(velocities_, connections_);
@@ -341,7 +342,7 @@ void Vicsek3DPBCInertiaAF::move(bool rebuild){
 }
 
 
-void Vicsek3DPBCInertiaAF::move(){
+void Vicsek3DPBCInertiaAF::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     old_velocities_ << velocities_;
     align_af();
@@ -382,7 +383,7 @@ void Attanasi2014PCB::move(bool rebuild){
 }
 
 
-void Attanasi2014PCB::move(){
+void Attanasi2014PCB::move_no_nl(){
     connections_ = get_connections(positions_, rc_);
     harmonic_align();
     normalise(velocities_);
@@ -405,7 +406,7 @@ void Vicsek3DPBCVN::move(bool rebuild){
 }
 
 
-void Vicsek3DPBCVN::move(){
+void Vicsek3DPBCVN::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     vicsek_align_vn(velocities_, connections_, noise_);
     positions_ += velocities_;
@@ -447,7 +448,7 @@ void Vicsek2D::move(bool rebuild){
 }
  
 
-void Vicsek2D::move(){
+void Vicsek2D::move_no_nl(){
     connections_ = get_connections(positions_, rc_);
     vicsek_align(velocities_, connections_);
     normalise(velocities_);
@@ -481,7 +482,7 @@ void Vicsek2DPBC::move(bool rebuild){
 }
 
 
-void Vicsek2DPBC::move(){
+void Vicsek2DPBC::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     vicsek_align(velocities_, connections_);
     normalise(velocities_);
@@ -524,7 +525,7 @@ void Vicsek2DPBCVN::move(bool rebuild){
 }
 
 
-void Vicsek2DPBCVN::move(){
+void Vicsek2DPBCVN::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     vicsek_align_vn(velocities_, connections_, noise_);
     normalise(velocities_, speed_);
@@ -614,7 +615,7 @@ void Vicsek2DPBCVNCO::move(bool rebuild){
 }
 
 
-void Vicsek2DPBCVNCO::move(){
+void Vicsek2DPBCVNCO::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     update_velocity();
     positions_ += velocities_;
@@ -649,7 +650,7 @@ void InertialSpin3D::move(bool rebuild){
 }
 
 
-void InertialSpin3D::move(){
+void InertialSpin3D::move_no_nl(){
     connections_ = get_connections(positions_, rc_);
     update_velocity_full();
     update_spin();
@@ -727,16 +728,6 @@ InertialSpin3DTP::InertialSpin3DTP(
     : InertialSpin3D{n, 1, v0, T, j, m, f}, nc_{nc} { }
 
 
-void InertialSpin3DTP::move(bool rebuild){
-    rebuild = false;
-    connections_ = get_topology_connections(positions_, nc_);
-    update_velocity_full();
-    update_spin();
-    positions_ += velocities_ * dt_;
-    normalise(velocities_, speed_);
-}
-
-
 void InertialSpin3DTP::move(){
     connections_ = get_topology_connections(positions_, nc_);
     update_velocity_full();
@@ -776,7 +767,7 @@ void InertialSpin3DPBC::move(bool rebuild){
 }
 
 
-void InertialSpin3DPBC::move(){
+void InertialSpin3DPBC::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
     update_velocity_full();
     update_spin();
