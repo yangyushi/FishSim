@@ -791,7 +791,7 @@ class Lavergne_2019_Science(ABP2D):
         self.r += self.D / self.kT * self.f * self.dt  # force
         self.r += np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
         # Re-orient
-        self.phi -= target * self.is_active
+        #self.phi -= target * self.is_active
         self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
         self.phi = self.phi % (2 * np.pi)
         self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
