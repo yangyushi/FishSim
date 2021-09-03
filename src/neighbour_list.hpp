@@ -9,7 +9,7 @@
 using Conn = std::vector< std::vector <int> >;
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
 using ConnMat = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
-using Indices = std::vector< int >;  // size is n
+using Indices = std::vector<int>;  // size is n
 using Neighbours = std::vector< Indices >;
 
 using Coord3D = Eigen::Matrix<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
@@ -199,10 +199,10 @@ class CellList3D{
     private:
         double rc_;
         double box_;
-        int size_; // number of particles
-        int ndim_ = 3;
-        int sc_;  // box is divided into sc * sc * sc cells
         bool pbc_;
+        int size_; // number of particles
+        const int ndim_ = 3;
+        int sc_;  // box is divided into sc * sc * sc cells
         Indices clist_;  // cell list
         Head3D chead_;  // cell head
         Index3D head_shape_;

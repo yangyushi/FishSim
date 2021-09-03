@@ -231,7 +231,8 @@ void Vicsek3D::move(){
 
 
 Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
-    : Vicsek3D{n, r, eta, v0}, box_{box}, cell_list_{r, box, true} {
+    : Vicsek3D{n, r, eta, v0}, box_{box}, cell_list_{r, box, true}
+   {
         double L_per_particle = pow(box * box * box / n, 1.0/3.0);
         if (L_per_particle > r){
             int sc = floor(box / L_per_particle / 2);

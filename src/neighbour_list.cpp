@@ -125,8 +125,7 @@ Indices2D product_2d(Indices& arr_1, Indices& arr_2){
 
 
 CellList3D::CellList3D(double r_cut, double box, bool pbc)
-    : rc_(r_cut), box_(box), pbc_(pbc) {
-    ndim_ = 3;
+    : rc_{r_cut}, box_{box}, pbc_{pbc} {
     size_ = 0;
     sc_ = floor(box_ / rc_ / 2);
     if (sc_ < 1) {
