@@ -29,7 +29,7 @@ def test_vicsek():
     box = (N / density) ** (1 / dim)
 
 
-    system = M1(N, eta=eta, r0=r0, v0=v0, box=box, D=1, kT=1, m=1)
+    system = M1(N, eta=eta, r=r0, v0=v0, box=box, D=1, kT=1, m=1)
     obs_dyn = fs.utility.Dynamic(block=block, report=True)
     system.attach(obs_dyn)
     fs.utility.animate(
@@ -37,7 +37,7 @@ def test_vicsek():
         title='Vicsek 3D PBC'
     )
 
-    system = M2(N, eta=eta, r0=r0, v0=v0, R=R, D=1, kT=1, m=1)
+    system = M2(N, eta=eta, r=r0, v0=v0, R=R, D=1, kT=1, m=1)
     obs_dyn = fs.utility.Dynamic(block=block, report=True)
     system.attach(obs_dyn)
     fs.utility.animate(
@@ -45,7 +45,7 @@ def test_vicsek():
         title='Vicsek 3D Sphere'
     )
 
-    system = M3(N, eta=eta, r0=r0, v0=v0, z_max=1, c=0.25, D=1, kT=1, m=1)
+    system = M3(N, eta=eta, r=r0, v0=v0, z_max=1, c=0.25, D=1, kT=1, m=1)
     obs_dyn = fs.utility.Dynamic(block=block, report=True)
     system.attach(obs_dyn)
     fs.utility.animate(

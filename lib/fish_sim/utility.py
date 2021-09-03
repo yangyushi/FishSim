@@ -82,16 +82,16 @@ def animate(
         for _ in range(jump):
             system.move()
         if system.dim == 3:
-            scatter.set_data(system.r.T[:2])
-            scatter.set_3d_properties(system.r.T[2])
+            scatter.set_data(system.get_positions()[:2])
+            scatter.set_3d_properties(system.get_positions()[2])
         else:
-            scatter.set_data(system.r.T)
+            scatter.set_data(system.get_positions())
             if (num == end_frame_num) and not repeat:
                 raise StopIteration
         return scatter
 
     scatter = ax.plot(
-        *system.r.T, color='teal', mfc='w', ls='None', marker='o',
+        *system.get_positions(), color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
     ani = FuncAnimationDisposable(
@@ -130,8 +130,8 @@ def animate_active_2d(
     def update(num, system, scatter):
         for _ in range(jump):
             system.move()
-        scatter.set_data(system.r.T)
-        quiver.set_offsets(system.r)
+        scatter.set_data(system.get_positions())
+        quiver.set_offsets(system.get_positions().T)
         quiver.set_UVC(
             np.cos(system.phi),
             np.sin(system.phi),
@@ -141,11 +141,11 @@ def animate_active_2d(
         return scatter
 
     scatter = ax.plot(
-        *system.r.T, color='teal', mfc='w', ls='None', marker='o',
+        *system.get_positions(), color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
     quiver = ax.quiver(
-        *system.r.T, np.cos(system.phi), np.sin(system.phi),
+        *system.get_positions(), np.cos(system.phi), np.sin(system.phi),
         pivot='mid', units='width', color='teal', zorder=5, scale=250/r,
     )
     ani = FuncAnimationDisposable(

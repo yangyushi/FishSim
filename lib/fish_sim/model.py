@@ -13,19 +13,25 @@ class BD():
     """
     The basic Brownian Dynamic simulation of ideal gas
     """
-    def __init__(self, N, dim, dt, gamma=None, kT=None, m=None, D=None, **kwargs):
-        self.N, self.dim, self.dt = N, dim, dt
+    def __init__(self, n, dim, dt, gamma=None, kT=None, m=None, D=None, **kwargs):
+        self.N, self.dim, self.dt = n, dim, dt
         self.gamma = gamma
         self.kT = kT
         self.m = m
         self.D = D
         self.update_parameters()
-        self.r = np.zeros((N, dim))  # positions
+        self.r = np.zeros((self.N, dim))  # positions
         self.f = np.zeros_like(self.r)
         self.interest = {}  # collect quantity of interest
         self.__observers = []  # ovserver design pattern
         sigma = np.sqrt(self.kT / (self.m * self.N))
         self.v = np.random.normal(0, sigma, (self.N, self.dim))
+
+    def get_positions(self):
+        return self.r.T
+
+    def get_velocities(self):
+        return self.v.T
 
     def attach(self, observer):
         self.interest = {}
@@ -557,11 +563,11 @@ class Vicsek3D(BD):
     """
     Vicsek Model Simulation in 3D
     """
-    def __init__(self, N, eta, v0, r0, **kwargs):
+    def __init__(self, n, r, eta, v0, **kwargs):
         kwargs.update({'m': 1, 'D': 1, 'kT': 1})  # meaningless in Vicsek Model
-        BD.__init__(self, N, dim=3, dt=1, **kwargs)
+        BD.__init__(self, n, dim=3, dt=1, **kwargs)
         self.v0 = v0  # speed
-        self.r0 = r0  # interaction range
+        self.r0 = r   # interaction range
         self.eta = eta
         self.r = np.random.randn(self.N, self.dim)
         self.o = np.random.randn(self.N, self.dim)  # orientation
@@ -605,8 +611,8 @@ class ABP2D(BD):
 
     see wysocki-2014-EPL (3D simulation)
     """
-    def __init__(self, N, dt, Pe, **kwargs):
-        BD.__init__(self, N, 2, dt, **kwargs)
+    def __init__(self, n, dt, Pe, **kwargs):
+        BD.__init__(self, n, 2, dt, **kwargs)
         if not self.D:
             raise KeyError("Missing the Diffusion constant of the system")
         self.Pe = Pe
@@ -651,8 +657,8 @@ class ABP3D(BD):
 
     see wysocki-2014-EPL (3D simulation)
     """
-    def __init__(self, N, dt, Pe, **kwargs):
-        BD.__init__(self, N, dim=3, dt=dt, **kwargs)
+    def __init__(self, n, dt, Pe, **kwargs):
+        BD.__init__(self, n, dim=3, dt=dt, **kwargs)
         if not self.D:
             raise KeyError("Missing the Diffusion constant of the system")
         self.Pe = Pe
@@ -718,23 +724,23 @@ class ABP3D(BD):
 
 @Boundary("pbc")
 class ABP2DWCAPBC(ABP2D):
-    def __init__(self, N, dt, Pe, **kwargs):
-        ABP2D.__init__(self, N, dt, Pe, **kwargs)
+    def __init__(self, n, dt, Pe, **kwargs):
+        ABP2D.__init__(self, n, dt, Pe, **kwargs)
         self.force_func = force_wca
 
 
 class Lavergne_2019_Science(ABP2D):
-    def __init__(self, N, dt, Pe, alpha, p_act, R0=24, **kwargs):
+    def __init__(self, n, dt, Pe, alpha, p_act, R0=24, **kwargs):
         """
         Args:
-            N (int): the number of particles
+            n (int): the number of particles
             Pe (float): The Péclet number
             alpha (float): the vision cone range, from 0 to π
             p_act (float): the perception activation threshold,
                 scaled by the centre perception. p_act = P* / Pc
                 (see Fig.4 where p_act range from 0 to 1.2)
         """
-        ABP2D.__init__(self, N, dt, Pe, **kwargs)
+        ABP2D.__init__(self, n, dt, Pe, **kwargs)
         self.alpha = alpha
         density = self.N / (np.pi * R0**2)
         self.p_centre = self.alpha / np.pi * R0 * density
@@ -801,14 +807,14 @@ class Lavergne_2019_Science(ABP2D):
 
 
 class Vision3D(ABP3D):
-    def __init__(self, N, dt, Pe, alpha, R0=24, **kwargs):
+    def __init__(self, n, dt, Pe, alpha, R0=24, **kwargs):
         """
         Args:
-            N (int): the number of particles
+            n (int): the number of particles
             Pe (float): The Péclet number
             alpha (float): the vision cone range, from 0 to π
         """
-        ABP3D.__init__(self, N, dt, Pe, **kwargs)
+        ABP3D.__init__(self, n, dt, Pe, **kwargs)
         self.alpha = alpha
         xy = np.random.randn(self.dim, self.N)
         r = np.linalg.norm(xy, axis=0)

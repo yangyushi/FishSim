@@ -24,7 +24,7 @@ def test_bd(plot=False):
     N, dim = 100, 4
     T, dt = 1000, 0.01
     D, kT, m = 1, 1, 1
-    x = BD(N=N, dim=dim, dt=dt, D=D, kT=kT, m=m)
+    x = BD(n=N, dim=dim, dt=dt, D=D, kT=kT, m=m)
     trajs = np.empty((T, N, dim))
     for t in range(T):
         x.move_overdamp()
