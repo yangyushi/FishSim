@@ -82,16 +82,16 @@ def animate(
         for _ in range(jump):
             system.move()
         if system.dim == 3:
-            scatter.set_data(system.get_positions()[:2])
-            scatter.set_3d_properties(system.get_positions()[2])
+            scatter.set_data(system.positions[:2])
+            scatter.set_3d_properties(system.positions[2])
         else:
-            scatter.set_data(system.get_positions())
+            scatter.set_data(system.positions)
             if (num == end_frame_num) and not repeat:
                 raise StopIteration
         return scatter
 
     scatter = ax.plot(
-        *system.get_positions(), color='teal', mfc='w', ls='None', marker='o',
+        *system.positions, color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
     ani = FuncAnimationDisposable(
@@ -130,8 +130,8 @@ def animate_active_2d(
     def update(num, system, scatter):
         for _ in range(jump):
             system.move()
-        scatter.set_data(system.get_positions())
-        quiver.set_offsets(system.get_positions().T)
+        scatter.set_data(system.positions)
+        quiver.set_offsets(system.positions.T)
         quiver.set_UVC(
             np.cos(system.phi),
             np.sin(system.phi),
@@ -141,11 +141,11 @@ def animate_active_2d(
         return scatter
 
     scatter = ax.plot(
-        *system.get_positions(), color='teal', mfc='w', ls='None', marker='o',
+        *system.positions, color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
     quiver = ax.quiver(
-        *system.get_positions(), np.cos(system.phi), np.sin(system.phi),
+        *system.positions, np.cos(system.phi), np.sin(system.phi),
         pivot='mid', units='width', color='teal', zorder=5, scale=250/r,
     )
     ani = FuncAnimationDisposable(
@@ -221,8 +221,8 @@ class Thermodynamic(Observer):
             print('-' * (21 * len(names)))
 
     def aggregate(self, system):
-        e_kin = np.mean(system.interest['kinetic']) / system.N
-        e_tot = e_kin + np.mean(system.interest['potential']) / system.N
+        e_kin = np.mean(system.interest['kinetic']) / system.n
+        e_tot = e_kin + np.mean(system.interest['potential']) / system.n
         press = system.kT * system.density + np.mean(system.interest['virial']) / system.volume
         t_kin = 2 * e_kin / system.dim
         t_con = np.mean(
@@ -261,8 +261,8 @@ class Dynamic(Observer):
             ]))
 
     def collect(self, system):
-        orient = system.v / np.linalg.norm(system.v, axis=1)[:, np.newaxis]
-        pol = np.linalg.norm(np.mean(orient, axis=0))
+        orient = system.velocities / np.linalg.norm(system.velocities, axis=0)[np.newaxis, :]
+        pol = np.linalg.norm(np.mean(orient, axis=1))
         self.result_frames['polarisation'] = pol
 
 
@@ -291,7 +291,7 @@ class DumpXYZ(Observer):
                 self.f, configuration, delimiter='\t',
                 fmt=['A\t%.8e'] + ['%.8e' for i in range(2 * system.dim - 1)],
                 comments='',
-                header='%s\nframe %s' % (system.N, self.count)
+                header='%s\nframe %s' % (system.n, self.count)
             )
             self.count += 1
 

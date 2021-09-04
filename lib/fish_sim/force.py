@@ -14,7 +14,7 @@ def force_lj(rij):
         rij (np.ndarray): the separation between particles, shape (dim, N, N)
 
     Return:
-        tuple: the force (np.ndarray with shape (N, dim)) and
+        tuple: the force (np.ndarray with shape (dim, N)) and
             other quantities of interest
     """
     r_cut = 2.5  # usual constant for LJ system
@@ -37,7 +37,7 @@ def force_lj(rij):
     f    = vir * sr2  # shape (N, N)
     f    = rij * f[np.newaxis, :, :]  # shape (dim, N, N)
     lap  = (22.0 * sr12 - 5.0 * sr6) * sr2  # shape (N, N)
-    f    = np.sum(f, axis=2).T * 24   # sum over columns of the displacement matrix
+    f    = np.sum(f, axis=2) * 24   # sum over columns of the displacement matrix
 
     interest = {
         "potential": np.sum(pot)  * 2.0,    # 4 / 2, because (ij - ji) double counted
@@ -93,4 +93,4 @@ def force_wca(rij):
         "laplacian": np.sum(lap)  * 24.0,
     }
 
-    return np.sum(f, axis=2).T * 24, interest  # sum over neighbours
+    return np.sum(f, axis=2) * 24, interest  # sum over neighbours

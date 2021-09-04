@@ -48,3 +48,8 @@ def test_cpp_optimise():
     assert (t_cpp * 10) < t_py, "10x speed up not achieved, check the optimisation setup"
 
 
+
+if __name__ == "__main__":
+    test_vicsek_2d()
+    test_vicsek_3d()
+    test_cpp_optimise()

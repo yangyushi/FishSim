@@ -1,37 +1,35 @@
-import pickle
-import numpy as np
 from itertools import product
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+
+import numpy as np
 from scipy.special import gamma as gamma_func
-from scipy.spatial.distance import pdist, cdist, squareform
 
 from .force import force_lj, force_wca
 from .noise_3d import add_vicsek_noise_3d
+
 
 class BD():
     """
     The basic Brownian Dynamic simulation of ideal gas
     """
     def __init__(self, n, dim, dt, gamma=None, kT=None, m=None, D=None, **kwargs):
-        self.N, self.dim, self.dt = n, dim, dt
+        self.n, self.dim, self.dt = n, dim, dt
+        self.positions = np.zeros((self.dim, self.n))  # positions
         self.gamma = gamma
         self.kT = kT
         self.m = m
         self.D = D
         self.update_parameters()
-        self.r = np.zeros((self.N, dim))  # positions
-        self.f = np.zeros_like(self.r)
+        self.f = np.zeros_like(self.positions)
         self.interest = {}  # collect quantity of interest
         self.__observers = []  # ovserver design pattern
-        sigma = np.sqrt(self.kT / (self.m * self.N))
-        self.v = np.random.normal(0, sigma, (self.N, self.dim))
+        sigma = np.sqrt(self.kT / (self.m * self.n))
+        self.velocities = np.random.normal(0, sigma, (self.dim, self.n))
 
     def get_positions(self):
-        return self.r.T
+        return self.positions
 
     def get_velocities(self):
-        return self.v.T
+        return self.velocities
 
     def attach(self, observer):
         self.interest = {}
@@ -79,19 +77,19 @@ class BD():
 
         To get sfhits, take columns. (vectors from i to all others = rij[:, i])
         """
-        return self.r.T[:, :, np.newaxis] - self.r.T[:, np.newaxis, :]
+        return self.positions[:, :, np.newaxis] - self.positions[:, np.newaxis, :]
 
     def fix_boundary(self): pass
 
-    def force_func(self, shift): return np.zeros((self.N, self.dim)), {}
+    def force_func(self, shift): return np.zeros((self.dim, self.n)), {}
 
     def get_force(self):
         rij = self.get_pair_shift()
         self.f, interest = self.force_func(rij)
         if self.m:
-            interest['kinetic'] = 0.5 * self.m * np.sum(self.v ** 2)
+            interest['kinetic'] = 0.5 * self.m * np.sum(self.velocities ** 2)
         else:
-            interest['kinetic'] = 0.5 * np.sum(self.v ** 2)
+            interest['kinetic'] = 0.5 * np.sum(self.velocities ** 2)
         for key in interest:
             if key in self.interest:
                 self.interest[key].append(interest[key])
@@ -107,9 +105,9 @@ class BD():
             kT (float): the temperature times Boltzmann constant
             m (float): the mass
         """
-        self.v += 0.5 * self.dt * self.f / self.m  # b propagator
+        self.velocities += 0.5 * self.dt * self.f / self.m  # b propagator
 
-        self.r += 0.5 * self.dt * self.v  # a propagator
+        self.positions += 0.5 * self.dt * self.velocities  # a propagator
         self.fix_boundary()
 
         # --- o propagator ---
@@ -118,22 +116,23 @@ class BD():
             1 - np.exp(- 2 * x) if x > 0.0001 else \
                 np.polyval([-2/3,4/3,-2.0,2.0,0.0], x)  # Tayler Expansion
         )
-        self.v = self.v * np.exp(-x) + c * np.sqrt(self.m * self.kT) * np.random.randn(self.N, self.dim)
+        self.velocities = self.velocities * np.exp(-x) +\
+            c * np.sqrt(self.m * self.kT) * np.random.randn(self.dim, self.n)
         # -------
 
-        self.r += 0.5 * self.dt * self.v  # a propagator
+        self.positions += 0.5 * self.dt * self.velocities  # a propagator
         self.fix_boundary()
 
         self.get_force()
 
-        self.v += 0.5 * self.dt * self.f / self.m  # b propagator
+        self.velocities += 0.5 * self.dt * self.f / self.m  # b propagator
 
         self.notify()
 
     def move_overdamp(self):
         self.get_force()
-        self.r += self.D / self.kT * self.f * self.dt + \
-                  np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
+        self.positions += self.D / self.kT * self.f * self.dt + \
+                  np.sqrt(2 * self.D * self.dt) * np.random.randn(self.dim, self.n)
         self.fix_boundary()
         self.notify()
 
@@ -166,17 +165,17 @@ def Boundary(condition):
                 except (ValueError, TypeError) as err:
                     raise ValueError("the box should be a numerical value")
                 self.volume = self.box ** self.dim
-                self.density = self.N / self.volume
-                repeat = np.ceil(np.power(self.N, 1 / self.dim)).astype(int)
+                self.density = self.n / self.volume
+                repeat = np.ceil(np.power(self.n, 1 / self.dim)).astype(int)
                 lattice = np.array(list(product(*[range(repeat)] * self.dim)))
-                self.r = lattice[:self.N] / repeat * kwargs['box']
+                self.positions = lattice[:self.n].T / repeat * kwargs['box']
                 self.get_force()
 
             def fix_boundary(self):
-                self.r %= self.box
+                self.positions %= self.box
 
             def get_pair_shift(self):
-                pos_in_box = self.r.T / self.box
+                pos_in_box = self.positions / self.box  # (dim, n)
                 pair_shift = pos_in_box[:, :, np.newaxis] - pos_in_box[:, np.newaxis, :]
                 pair_shift = (pair_shift - np.rint(pair_shift)) * self.box
                 return pair_shift
@@ -194,53 +193,57 @@ def Boundary(condition):
                     raise ValueError("the radius should be a numerical value")
                 self.volume = np.pi**(self.dim / 2) /\
                               gamma_func(self.dim/2 + 1) * self.R**self.dim
-                self.density = self.N / self.volume
-                p = np.random.randn(self.dim, self.N)  # positions
+                self.density = self.n / self.volume
+                p = np.random.randn(self.dim, self.n)  # positions
                 r = np.linalg.norm(p, axis=0)  # radii
-                l = np.random.uniform(0, self.R**self.dim, self.N) ** (1 / self.dim)
-                self.r = (p / r * l).T  # uniform inside n-sphere
+                l = np.random.uniform(0, self.R**self.dim, self.n) ** (1 / self.dim)
+                self.positions = p / r * l  # uniform inside n-sphere
                 self.get_force()
 
             def fix_boundary(self):
                 """
                 fish that are outside of the circle should not move further
                 """
-                v0 = self.v.copy()
-                is_outside = np.linalg.norm(self.r, axis=1) >= self.R
+                v0 = self.velocities.copy()
+                is_outside = np.linalg.norm(self.positions, axis=0) >= self.R
                 if not np.any(is_outside):
                     return
-                v_orient = self.v[is_outside]  # n, 2
-                r_orient = self.r[is_outside]  # n, 2
-                v_mag = np.linalg.norm(v_orient, axis=1)  # n,
-                r_mag = np.linalg.norm(r_orient, axis=1)  # n,
-                v_orient /= v_mag[:, np.newaxis]
-                r_orient /= r_mag[:, np.newaxis]
-                angles = np.arccos(np.einsum('ij,ij->i', v_orient, r_orient))  # n,
-                signs = np.sign(np.cross(v_orient, r_orient))
+                v_orient = self.velocities[:, is_outside]  # dim, n
+                r_orient = self.positions[:, is_outside]  # dim, n
+                v_mag = np.linalg.norm(v_orient, axis=0)  # n,
+                r_mag = np.linalg.norm(r_orient, axis=0)  # n,
+                v_orient /= v_mag[np.newaxis, :]  # dim, n
+                r_orient /= r_mag[np.newaxis, :]  # dim, n
+                angles = np.arccos(np.einsum('ij,ij->j', v_orient, r_orient))  # n,
+                signs = np.sign(np.cross(v_orient.T, r_orient.T).T)  # dim, n
                 # if greater than pi/2, no change, otherwise change to pi/2
                 should_fix = np.abs(angles) < np.pi/2  # n
                 if not np.any(should_fix):
                     return
                 if self.dim == 2:
-                    r_angle = np.arctan2(r_orient[:, 1], r_orient[:, 0])  # n,
-                    v_orient[should_fix, 0] = np.cos(
-                        r_angle[should_fix] - signs[should_fix] * np.pi/2
+                    r_angle = np.arctan2(r_orient[1], r_orient[0])  # n,
+                    v_orient[0, should_fix] = np.cos(
+                        r_angle[:, should_fix] - signs[:, should_fix] * np.pi/2
                     ) * v_mag[should_fix]
-                    v_orient[should_fix, 1] = np.sin(
-                        r_angle[should_fix] - signs[should_fix] * np.pi/2
+                    v_orient[1, should_fix] = np.sin(
+                        r_angle[:, should_fix] - signs[:, should_fix] * np.pi/2
                     ) * v_mag[should_fix]
-                    self.v[is_outside, :] = v_orient
-                    self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
+                    self.velocities[:, is_outside] = v_orient
+                    self.phi[is_outside] = np.arctan2(v_orient[1], v_orient[0])
                 elif self.dim == 3:
                     e_align = np.cross(
-                        r_orient[should_fix],
-                        np.cross(v_orient[should_fix], r_orient[should_fix]),
-                    )
-                    e_align = e_align / np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                        r_orient[:, should_fix].T,
+                        np.cross(
+                            v_orient[:, should_fix].T,
+                            r_orient[:, should_fix].T
+                        ),
+                    ).T
+                    e_align = e_align / np.linalg.norm(e_align, axis=0)[None, :]
                     to_fix = is_outside.copy()
                     to_fix[to_fix] *= should_fix   # to fix = outside & angle < np.pi/2
-                    self.o[to_fix] = e_align
-                    self.v[is_outside] = self.o[is_outside] * v_mag[:, np.newaxis]
+                    self.o[:, to_fix] = e_align
+                    self.velocities[:, is_outside] =\
+                        self.o[:, is_outside] * v_mag[np.newaxis, :]
                 else:
                     raise ValueError("Only 2D and 3D systems are supported")
 
@@ -262,28 +265,28 @@ def Boundary(condition):
                     raise ValueError("the radius should be a numerical value")
                 self.volume = np.pi**(self.dim / 2) /\
                               gamma_func(self.dim/2 + 1) * self.R**self.dim
-                self.density = self.N / self.volume
-                p = np.random.randn(self.dim, self.N)  # positions
+                self.density = self.n / self.volume
+                p = np.random.randn(self.dim, self.n)  # positions
                 r = np.linalg.norm(p, axis=0)  # radii
-                l = np.random.uniform(0, self.R**self.dim, self.N) ** (1 / self.dim)
-                self.r = (p / r * l).T  # uniform inside n-sphere
-                self.r[self.r[:, self.dim-1] > 0, self.dim-1] *= -1
+                l = np.random.uniform(0, self.R**self.dim, self.n) ** (1 / self.dim)
+                self.positions = p / r * l  # uniform inside n-sphere
+                self.positions[self.positions[:, self.dim-1] > 0, self.dim-1] *= -1
                 self.get_force()
 
             def fix_boundary(self):
                 """
                 fish that are outside of the circle should not move further
                 """
-                v0 = self.v.copy()
-                out_sphere = np.linalg.norm(self.r, axis=1) >= self.R
-                out_cap = self.r[:, self.dim - 1] > 0
+                v0 = self.velocities.copy()
+                out_sphere = np.linalg.norm(self.positions, axis=0) >= self.R
+                out_cap = self.positions[:, self.dim - 1] > 0
                 is_outside = np.logical_or(out_sphere, out_cap)
                 if not np.any(is_outside):
                     return
-                excess_cap = self.r[is_outside, self.dim - 1]  # shape (N', ) prime means N outside
-                excess_sph = np.linalg.norm(self.r[is_outside], axis=1) - self.R  # shape (N', )
-                v_orient = self.v[is_outside]  # n, 2
-                r_orient = self.r[is_outside]  # n, 2
+                excess_cap = self.positions[is_outside, self.dim - 1]  # shape (N', ) prime means N outside
+                excess_sph = np.linalg.norm(self.positions[is_outside], axis=1) - self.R  # shape (N', )
+                v_orient = self.velocities[is_outside]  # n, 2
+                r_orient = self.positions[is_outside]  # n, 2
                 v_mag = np.linalg.norm(v_orient, axis=1)  # n,
                 r_mag = np.linalg.norm(r_orient, axis=1)  # n,
                 v_orient /= v_mag[:, np.newaxis]
@@ -317,7 +320,7 @@ def Boundary(condition):
                         v_orient[should_fix_cap, 0] *= signs
                         v_orient[should_fix_cap] *= v_mag[should_fix_cap][:, np.newaxis]
                     # update velocity
-                    self.v[is_outside, :] = v_orient
+                    self.velocities[is_outside, :] = v_orient
                     self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
                 elif self.dim == 3:
                     # fix the particles that exceeds the sphere
@@ -339,7 +342,7 @@ def Boundary(condition):
                         to_fix[to_fix] *= should_fix_cap   # to fix = outside & angle < np.pi/2
                         self.o[to_fix] = e_align
                     # update the velocity
-                    self.v[is_outside] = self.o[is_outside] * v_mag[:, np.newaxis]
+                    self.velocities[is_outside] = self.o[is_outside] * v_mag[:, np.newaxis]
                 else:
                     raise ValueError("Only 2D and 3D systems are supported")
         return SystemAHS
@@ -368,25 +371,25 @@ def Boundary(condition):
                     self.c = float(self.c)
                 except (ValueError, TypeError) as err:
                     raise ValueError("c should be a numerical value")
-                rand_z = np.random.uniform(0, self.z_max, self.N)
-                rand_r = np.random.uniform(-1, 1, self.N) * np.sqrt(rand_z / self.c)
+                rand_z = np.random.uniform(0, self.z_max, self.n)
+                rand_r = np.random.uniform(-1, 1, self.n) * np.sqrt(rand_z / self.c)
                 if self.dim == 2:
                     self.volume = 2 * (
                        self.z_max * self.r_max -\
                        2 * self.c / 3 * self.r_max**3
                     )
-                    self.r = np.array((rand_z, rand_r)).T
+                    self.positions = np.array((rand_z, rand_r))
                 elif self.dim == 3:
                     self.volume = np.pi / self.c * self.z_max**2
-                    rand_phi = np.random.uniform(0, np.pi * 2, self.N)
-                    self.r = np.array((
+                    rand_phi = np.random.uniform(0, np.pi * 2, self.n)
+                    self.positions = np.array((
                         rand_r * np.cos(rand_phi),
                         rand_r * np.sin(rand_phi),
                         rand_z
-                    )).T
+                    ))
                 else:
                     raise ValueError("Invalid Dimension")
-                self.density = self.N / self.volume
+                self.density = self.n / self.volume
                 self.get_force()
 
             def __project(self, r, z):
@@ -419,46 +422,49 @@ def Boundary(condition):
                 """
                 fish that are outside of the boundary should not move further
                 """
-                v0 = self.v.copy()
-                radii = np.linalg.norm(self.r[:, : self.dim - 1], axis=1)  # shape (N, )
-                z = self.r[:, self.dim - 1]  # it is actually y in 2D
-                out_hyp = self.c * radii**2 > z
-                out_cap = z > self.z_max
-                is_outside = np.logical_or(out_hyp, out_cap)
+                radii = np.linalg.norm(  # shape (n, )
+                    self.positions[:self.dim - 1, :], axis=0
+                )
+                z = self.positions[self.dim - 1, :]  # it is actually y in 2D, shape n
+                out_hyp = self.c * radii**2 > z  # n,
+                out_cap = z > self.z_max  # n,
+                is_outside = np.logical_or(out_hyp, out_cap)  # n,
                 if not np.any(is_outside):
                     return
-                radii_out = radii[is_outside]
-                z_out = z[is_outside]
-                radii_out_proj, z_out_proj = self.__project(radii_out, z_out)
+                radii_out = radii[is_outside]  # n,
+                z_out = z[is_outside]  # n,
+                radii_out_proj, z_out_proj = self.__project(radii_out, z_out)  # n,
                 excess_cap = z_out - self.z_max
                 excess_hyp = np.sqrt(
                     (radii_out - radii_out_proj)**2 + (z_out - z_out_proj)**2
                 )
                 excess_hyp[self.c * radii_out**2 < z_out] = 0  # ignore the inside cases
 
-                v_orient = self.v[is_outside]  # n, 2
-                v_mag = np.linalg.norm(v_orient, axis=1)  # n,
-                v_orient /= v_mag[:, np.newaxis]
+                v_orient = self.velocities[:, is_outside]  # dim, n
+                v_mag = np.linalg.norm(v_orient, axis=0)  # n,
+                v_orient /= v_mag[np.newaxis, :]  # dim, n
                 if self.dim == 2:
-                    r_proj = np.array((
-                        np.sign(self.r[is_outside, 0]) * radii_out_proj,  # projected x
+                    r_proj = np.array((  # dim, n
+                        np.sign(self.positions[0, is_outside]) * radii_out_proj,  # projected x
                         z_out_proj  # projected y
-                    )).T
+                    ))
                 elif self.dim == 3:
-                    phi = np.arctan2(self.r[is_outside, 1], self.r[is_outside, 0])
-                    r_proj = np.array((
+                    phi = np.arctan2(
+                        self.positions[1, is_outside], self.positions[0, is_outside]
+                    )
+                    r_proj = np.array((  # dim, n
                         radii_out_proj * np.cos(phi),
                         radii_out_proj * np.sin(phi),
                         z_out_proj
-                    )).T
+                    ))
                 else:
                     raise ValueError("Only 2D and 3D systems are supported")
-                r_orient = self.r[is_outside] - r_proj # n, dim
-                r_mag = np.linalg.norm(r_orient, axis=1)  # n,
-                r_orient /= r_mag[:, np.newaxis]
-                angles = np.arccos(np.einsum('ij,ij->i', v_orient, r_orient))  # n,
+                r_orient = self.positions[:, is_outside] - r_proj # dim, n
+                r_mag = np.linalg.norm(r_orient, axis=0)  # n,
+                r_orient /= r_mag[np.newaxis, :]
+                angles = np.arccos(np.einsum('ij,ij->j', v_orient, r_orient))  # n,
                 # if greater than pi/2, no change, otherwise change to pi/2
-                should_fix_cap = v_orient[:, self.dim-1] > 0
+                should_fix_cap = v_orient[self.dim-1, :] > 0  # n,
                 should_fix_hyp = np.abs(angles) < np.pi / 2  # n
                 should_fix_cap[excess_cap < excess_hyp] = False
                 should_fix_hyp[excess_cap >= excess_hyp] = False
@@ -468,61 +474,65 @@ def Boundary(condition):
                 if self.dim == 2:
                     # fix the particles that exceeds the hyperbolic
                     if np.sum(should_fix_hyp) > 0:
-                        signs = np.sign(np.cross(v_orient, r_orient))
-                        r_angle = np.arctan2(r_orient[:, 1], r_orient[:, 0])  # n,
-                        v_orient[should_fix_hyp, 0] = np.cos(
+                        signs = np.sign(np.cross(v_orient.T, r_orient.T).T)
+                        r_angle = np.arctan2(r_orient[1], r_orient[0])  # n,
+                        v_orient[0, should_fix_hyp] = np.cos(
                             r_angle[should_fix_hyp] - signs[should_fix_hyp] * np.pi/2
                         ) * v_mag[should_fix_hyp]
-                        v_orient[should_fix_hyp, 1] = np.sin(
+                        v_orient[1, should_fix_hyp] = np.sin(
                             r_angle[should_fix_hyp] - signs[should_fix_hyp] * np.pi/2
                         ) * v_mag[should_fix_hyp]
                     # fix the particles that exceeds the cap
                     fix_cap_num = np.sum(should_fix_cap)
                     if fix_cap_num > 0:
-                        signs = np.sign(v_orient[should_fix_cap, 0])
-                        cap_fixed = np.repeat(np.array((1, 0))[np.newaxis, :], fix_cap_num, axis=0)
+                        signs = np.sign(v_orient[0, should_fix_cap])
+                        cap_fixed = np.repeat(
+                            np.array((1, 0))[:, np.newaxis], fix_cap_num, axis=1
+                        )  # dim, n
                         v_orient[should_fix_cap] = cap_fixed
-                        v_orient[should_fix_cap, 0] *= signs
-                        v_orient[should_fix_cap] *= v_mag[should_fix_cap][:, np.newaxis]
+                        v_orient[0, should_fix_cap] *= signs
+                        v_orient[should_fix_cap] *= v_mag[should_fix_cap][np.newaxis, :]
                     # update velocity
-                    self.v[is_outside, :] = v_orient
-                    self.phi[is_outside] = np.arctan2(v_orient[:, 1], v_orient[:, 0])
+                    self.velocities[:, is_outside] = v_orient
+                    self.phi[is_outside] = np.arctan2(v_orient[1], v_orient[0])
                 elif self.dim == 3:
                     # fix the particles that exceeds the hyperbolic
                     if np.sum(should_fix_hyp) > 0:
                         e_align = np.cross(
-                            r_orient[should_fix_hyp],
-                            np.cross(v_orient[should_fix_hyp], r_orient[should_fix_hyp]),
-                        )
-                        e_align = e_align / np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                            r_orient[:, should_fix_hyp].T,
+                            np.cross(
+                                v_orient[:, should_fix_hyp].T,
+                                r_orient[:, should_fix_hyp].T
+                            ),
+                        ).T  # dim, n
+                        e_align = e_align / np.linalg.norm(e_align, axis=0)[np.newaxis, :]
                         to_fix = is_outside.copy()
                         to_fix[to_fix] *= should_fix_hyp   # to fix = outside & angle < np.pi/2
-                        self.o[to_fix] = e_align
+                        self.o[:, to_fix] = e_align
                     # fix the particles that exceeds the cap
                     if np.sum(should_fix_cap) > 0:
-                        e_align = v_orient[should_fix_cap].copy()
-                        e_align[:, -1] = 0
-                        e_align /= np.linalg.norm(e_align, axis=1)[:, np.newaxis]
+                        e_align = v_orient[:, should_fix_cap].copy()
+                        e_align[-1] = 0
+                        e_align /= np.linalg.norm(e_align, axis=0)[np.newaxis, :]
                         to_fix = is_outside.copy()
                         to_fix[to_fix] *= should_fix_cap   # to fix = outside & angle < np.pi/2
-                        self.o[to_fix] = e_align
+                        self.o[:, to_fix] = e_align
                     # update the velocity
-                    self.v[is_outside] = self.o[is_outside] * v_mag[:, np.newaxis]
+                    self.velocities[:, is_outside] = self.o[:, is_outside] *\
+                        v_mag[np.newaxis, :]
                 else:
                     raise ValueError("Only 2D and 3D systems are supported")
         return SystemAFB
 
-
     if condition == "pbc":
         return pbc_decorator
-    elif condition == "align_sphere":
+    if condition == "align_sphere":
         return align_sphere
-    elif condition == "align_half_sphere":
+    if condition == "align_half_sphere":
         return align_half_sphere
-    elif condition == "align_fish_bowl":
+    if condition == "align_fish_bowl":
         return align_fish_bowl
-    else:
-        return lambda x: x
+    return lambda x: x
 
 
 @Boundary("pbc")
@@ -569,32 +579,32 @@ class Vicsek3D(BD):
         self.v0 = v0  # speed
         self.r0 = r   # interaction range
         self.eta = eta
-        self.r = np.random.randn(self.N, self.dim)
-        self.o = np.random.randn(self.N, self.dim)  # orientation
-        self.o = self.o / np.linalg.norm(self.o, axis=1)[:, np.newaxis]
-        self.v = self.o * self.v0
+        self.positions = np.random.randn(self.dim, self.n)
+        self.o = np.random.randn(self.dim, self.n)  # orientation
+        self.o = self.o / np.linalg.norm(self.o, axis=0)[np.newaxis, :]
+        self.velocities = self.o * self.v0
 
     def move(self):
         self.get_force()
         # active
-        self.r += self.v * self.dt
+        self.positions += self.velocities * self.dt
 
         rij = self.get_pair_shift()
         dij = np.linalg.norm(rij, axis=0)  # distances, shape (N, N)
         aij = dij < self.r0  # adjacency matrix (N, N)
         nni = np.sum(aij, axis=0)  # number of neighbours for each particle
 
-        vii = self.v.T[:, np.newaxis, :] * np.ones((3, self.N, 1))  # (3, N, N)
+        vii = self.velocities[:, np.newaxis, :] * np.ones((3, self.n, 1))  # (3, N, N)
         v_mean = np.sum(vii * aij[np.newaxis, :, :], axis=2) / nni  # (3, N)
         v_xy = np.linalg.norm(v_mean[:2], axis=0)  # (N,)
         azi = np.arctan2(v_mean[1], v_mean[0]) # (N,)
         ele = np.arctan(v_mean[2] / v_xy)  # (N,)
         azi, ele = add_vicsek_noise_3d(azi, ele, eta=self.eta)
         e_xy = np.cos(ele)
-        self.o[:, 2] = np.sin(ele)
-        self.o[:, 1] = e_xy * np.sin(azi)
-        self.o[:, 0] = e_xy * np.cos(azi)
-        self.v = self.o * self.v0
+        self.o[2] = np.sin(ele)
+        self.o[1] = e_xy * np.sin(azi)
+        self.o[0] = e_xy * np.cos(azi)
+        self.velocities = self.o * self.v0
 
         self.fix_boundary()
         self.notify()
@@ -618,11 +628,11 @@ class ABP2D(BD):
         self.Pe = Pe
         self.v0 = self.Pe * self.D
         self.Dr = 3 * self.D
-        self.r = np.random.randn(self.N, self.dim)
-        self.o = np.random.randn(self.N, self.dim)  # orientation
-        self.o = self.o / np.linalg.norm(self.o, axis=1)[:, np.newaxis]
-        self.v = self.o * self.v0
-        self.phi = np.random.uniform(0, 2 * np.pi, self.N)
+        self.positions = np.random.randn(self.dim, self.n)
+        self.o = np.random.randn(self.dim, self.n)  # orientation
+        self.o = self.o / np.linalg.norm(self.o, axis=0)[np.newaxis, :]
+        self.velocities = self.o * self.v0
+        self.phi = np.random.uniform(0, 2 * np.pi, self.n)
 
     def move_overdamp(self):
         """
@@ -632,15 +642,15 @@ class ABP2D(BD):
         """
         self.get_force()
         # active
-        self.r += self.v * self.dt
+        self.positions += self.velocities * self.dt
         # Brownian
-        self.r += self.D / self.kT * self.f * self.dt + \
-                  np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
+        self.positions += self.D / self.kT * self.f * self.dt + \
+                  np.sqrt(2 * self.D * self.dt) * np.random.randn(self.dim, self.n)
         # Re-orient
-        self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
+        self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.n)
         self.phi = self.phi % (2 * np.pi)
-        self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
-        self.v = self.o * self.v0
+        self.o = np.array((np.cos(self.phi), np.sin(self.phi)))  # (2, n)
+        self.velocities = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -664,10 +674,10 @@ class ABP3D(BD):
         self.Pe = Pe
         self.v0 = self.Pe * self.D
         self.Dr = 3 * self.D
-        self.r = np.random.randn(self.N, self.dim)
-        self.o = np.random.randn(self.N, self.dim)  # orientation
-        self.o /= np.linalg.norm(self.o, axis=1)[:, np.newaxis]
-        self.v = self.o * self.v0
+        self.positions = np.random.randn(self.dim, self.n)
+        self.o = np.random.randn(self.dim, self.n)  # orientation
+        self.o /= np.linalg.norm(self.o, axis=0)[np.newaxis, :]
+        self.velocities = self.o * self.v0
 
     def rot_diffuse(self):
         """
@@ -675,15 +685,15 @@ class ABP3D(BD):
         (https://github.com/FTurci/active-lammps, I copied Francesco's code)
         (Winkler et al. Soft Matter, 2015, 11, 6680)
         """
-        ox, oy, oz = self.o.T
+        ox, oy, oz = self.o
         cos_theta = oz
         sin_theta = np.sqrt(1 - oz**2)
         phi = np.arctan2(oy, ox)
         cos_phi = np.cos(phi)
         sin_phi = np.sin(phi)
 
-        e_theta = np.empty((3, self.N))
-        e_phi = np.empty((3, self.N))
+        e_theta = np.empty((3, self.n))
+        e_phi = np.empty((3, self.n))
         e_theta[0] =  cos_phi * cos_theta
         e_theta[1] =  sin_phi * cos_theta
         e_theta[2] =           -sin_theta
@@ -691,13 +701,13 @@ class ABP3D(BD):
         e_phi[1]   =  cos_phi
         e_phi[2]   =  0.0
 
-        r1, r2 = np.random.randn(2, self.N) * np.sqrt(2 * self.Dr)
+        r1, r2 = np.random.randn(2, self.n) * np.sqrt(2 * self.Dr)
         dt_wiener = np.sqrt(self.dt)
         for i in range(3):
-            self.o[:, i] += e_theta[i] * dt_wiener * r1 +\
+            self.o[i, :] += e_theta[i] * dt_wiener * r1 +\
                             e_phi[i]   * dt_wiener * r2 -\
-                        2 * self.Dr * self.dt * self.o[:, i]
-        self.o /= np.linalg.norm(self.o, axis=1)[:, np.newaxis]
+                            2 * self.Dr * self.dt * self.o[i, :]
+        self.o /= np.linalg.norm(self.o, axis=0)[np.newaxis, :]
 
     def move_overdamp(self):
         """
@@ -708,13 +718,13 @@ class ABP3D(BD):
         """
         self.get_force()
         # active
-        self.r += self.v * self.dt
+        self.positions += self.velocities * self.dt
         # Brownian
-        self.r += self.D / self.kT * self.f * self.dt + \
-                  np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
+        self.positions += self.D / self.kT * self.f * self.dt + \
+                  np.sqrt(2 * self.D * self.dt) * np.random.randn(self.dim, self.n)
         # Re-orient
         self.rot_diffuse()
-        self.v = self.o * self.v0
+        self.velocities = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -742,14 +752,14 @@ class Lavergne_2019_Science(ABP2D):
         """
         ABP2D.__init__(self, n, dt, Pe, **kwargs)
         self.alpha = alpha
-        density = self.N / (np.pi * R0**2)
+        density = self.n / (np.pi * R0**2)
         self.p_centre = self.alpha / np.pi * R0 * density
         self.p_act = p_act * self.p_centre
-        xy = np.random.randn(self.dim, self.N)
+        xy = np.random.randn(self.dim, self.n)
         r = np.linalg.norm(xy, axis=0)
-        l = np.random.uniform(0, R0**2, self.N) ** (1 / self.dim)
-        self.r = (xy / r * l).T
-        self.is_active = np.ones(self.N, dtype=bool)
+        l = np.random.uniform(0, R0**2, self.n) ** (1 / self.dim)
+        self.positions = xy / r * l
+        self.is_active = np.ones(self.n, dtype=bool)
 
     def get_perception(self):
         rij = self.get_pair_shift()  # 2, N, N
@@ -791,17 +801,17 @@ class Lavergne_2019_Science(ABP2D):
         """
         self.is_active = self.get_perception() > self.p_act
         # active
-        self.r += self.v * self.dt * self.is_active[:, np.newaxis]
+        self.positions += self.velocities * self.dt * self.is_active[np.newaxis, :]
         # Brownian
         self.get_force()
-        self.r += self.D / self.kT * self.f * self.dt  # force
-        self.r += np.sqrt(2 * self.D * self.dt) * np.random.randn(self.N, self.dim)
+        self.positions += self.D / self.kT * self.f * self.dt  # force
+        self.positions += np.sqrt(2 * self.D * self.dt) * np.random.randn(self.dim, self.n)
         # Re-orient
         #self.phi -= target * self.is_active
-        self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
+        self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.n)
         self.phi = self.phi % (2 * np.pi)
-        self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
-        self.v = self.o * self.v0
+        self.o = np.array((np.cos(self.phi), np.sin(self.phi)))  # (n, 2)
+        self.velocities = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -816,11 +826,11 @@ class Vision3D(ABP3D):
         """
         ABP3D.__init__(self, n, dt, Pe, **kwargs)
         self.alpha = alpha
-        xy = np.random.randn(self.dim, self.N)
+        xy = np.random.randn(self.dim, self.n)
         r = np.linalg.norm(xy, axis=0)
-        l = np.random.uniform(0, R0**2, self.N) ** (1 / self.dim)
-        self.r = (xy / r * l).T
-        self.is_active = np.ones(self.N, dtype=bool)
+        l = np.random.uniform(0, R0**2, self.n) ** (1 / self.dim)
+        self.positions = xy / r * l
+        self.is_active = np.ones(self.n, dtype=bool)
         self.p_act = 0
 
 
@@ -828,14 +838,14 @@ class Vision3D(ABP3D):
         perception, target = self.get_perception()
         self.is_active =  perception > self.p_act
         # active
-        self.r += self.v * self.dt
+        self.positions += self.velocities * self.dt
         # Brownian (No translational diffusion)
         self.get_force()
-        self.r += self.D / self.kT * self.f * self.dt  # force
+        self.positions += self.D / self.kT * self.f * self.dt  # force
         # Re-orient (Orientational diffusion)
         self.o[self.is_active] = target[self.is_active]
         self.rot_diffuse()
-        self.v = self.o * self.v0
+        self.velocities = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -845,12 +855,12 @@ class Vision3D(ABP3D):
         np.fill_diagonal(dist, np.inf)
         eij = rij / dist[np.newaxis, :, :]  # 3, N, N
         # self.o boardcast to 3, N, N; should sum over rows
-        oi = self.o.T[:, np.newaxis, :] * np.ones((1, self.N, 1))  # 3, N, N
+        oi = self.o[:, np.newaxis, :] * np.ones((1, self.n, 1))  # 3, N, N
         angle_diff = np.arccos(np.einsum('ijk,ijk->jk', eij, oi))  # N, N
         angle_diff_ij = angle_diff.copy()
         np.fill_diagonal(angle_diff_ij, np.inf)
         min_diff = np.argmin(angle_diff_ij, axis=0)
-        target = eij[:, min_diff, np.arange(self.N)].T  # N, 3
+        target = eij[:, min_diff, np.arange(self.n)].T  # N, 3
         adj_mat = np.abs(angle_diff) < self.alpha
         np.fill_diagonal(adj_mat, 0)
         return np.sum(adj_mat / dist, axis=0) / (2 * np.pi), target
@@ -867,16 +877,16 @@ class Vision(Lavergne_2019_Science):
         perception, target = self.get_perception()
         self.is_active =  perception > self.p_act
         # active
-        self.r += self.v * self.dt
+        self.positions += self.velocities * self.dt
         # Brownian (No translational diffusion)
         self.get_force()
-        self.r += self.D / self.kT * self.f * self.dt  # force
+        self.positions += self.D / self.kT * self.f * self.dt  # force
         # Re-orient (Orientational diffusion)
         self.phi -= target * self.is_active
-        self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.N)
+        self.phi += np.sqrt(2 * self.Dr * self.dt) * np.random.randn(self.n)
         self.phi = self.phi % (2 * np.pi)
-        self.o = np.array((np.cos(self.phi), np.sin(self.phi))).T  # (n, 2)
-        self.v = self.o * self.v0
+        self.o = np.array((np.cos(self.phi), np.sin(self.phi)))  # (dim, n)
+        self.velocities = self.o * self.v0
         self.fix_boundary()
         self.notify()
 
@@ -892,7 +902,7 @@ class Vision(Lavergne_2019_Science):
         target = (angle_diff * adj_mat).sum(axis=0) / neighbour_num
         target[neighbour_num==0]=0
         close = np.argmin(np.abs(angle_diff), axis=0)
-        target = angle_diff[close, np.arange(self.N)]
+        target = angle_diff[close, np.arange(self.n)]
         return np.sum(adj_mat / dist, axis=0) / (2 * np.pi), target
 
 

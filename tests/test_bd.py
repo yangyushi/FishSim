@@ -28,7 +28,7 @@ def test_bd(plot=False):
     trajs = np.empty((T, N, dim))
     for t in range(T):
         x.move_overdamp()
-        trajs[t] = x.r
+        trajs[t] = x.positions.T
     trajs = np.moveaxis(trajs, 1, 0)
     tau, msd = get_msd(trajs, 50)
     msd = np.mean(msd, axis=0)
@@ -49,3 +49,7 @@ def test_bd(plot=False):
         plt.legend()
         plt.tight_layout()
         plt.show()
+
+
+if __name__ == "__main__":
+    test_bd(True)

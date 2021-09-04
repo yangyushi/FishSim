@@ -855,13 +855,20 @@ PYBIND11_MODULE(cmodel, m){
         .def(
             py::init<
                 int, int, double
-            >()
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("k"),
+            pybind11::arg("eta")
         )
         .def("move", &Network3D::move)
         .def("evolve", &Network3D::evolve)
         .def("get_polarisaion", &Network3D::get_polarisation)
         .def("get_velocities", &Network3D::get_velocities)
-        .def("load_velocities", &Network3D::load_velocities);
+        .def("load_velocities", &Network3D::load_velocities)
+        .def_property(
+                "velocities", &Network3D::get_velocities,
+                &Network3D::load_velocities, py::return_value_policy::copy
+                );
 
     py::class_<Vicsek3D>(m, "Vicsek3D")
         .def(
@@ -879,7 +886,15 @@ PYBIND11_MODULE(cmodel, m){
         .def("get_velocities", &Vicsek3D::get_velocities)
         .def("get_positions", &Vicsek3D::get_positions)
         .def("load_velocities", &Vicsek3D::load_velocities)
-        .def_readonly("dim", &Vicsek3D::ndim_);
+        .def_readonly("dim", &Vicsek3D::ndim_)
+        .def_property("positions",
+                &Vicsek3D::get_positions, &Vicsek3D::load_positions,
+                py::return_value_policy::copy
+        )
+        .def_property("velocities",
+                &Vicsek3D::get_velocities, &Vicsek3D::load_velocities,
+                py::return_value_policy::copy
+        );
 
     py::class_<Vicsek3DPBC>(m, "Vicsek3DPBC")
         .def(
@@ -898,5 +913,13 @@ PYBIND11_MODULE(cmodel, m){
         .def("get_velocities", &Vicsek3DPBC::get_velocities)
         .def("get_positions", &Vicsek3DPBC::get_positions)
         .def("load_velocities", &Vicsek3DPBC::load_velocities)
+        .def_property("positions",
+                &Vicsek3DPBC::get_positions, &Vicsek3DPBC::load_positions,
+                py::return_value_policy::copy
+        )
+        .def_property("velocities",
+                &Vicsek3DPBC::get_velocities, &Vicsek3DPBC::load_velocities,
+                py::return_value_policy::copy
+        )
         .def_readonly("dim", &Vicsek3DPBC::ndim_);
 }

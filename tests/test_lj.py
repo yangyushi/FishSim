@@ -15,8 +15,8 @@ def test_lj():
         gamma=1, kT=1, m=1
     )
 
-    system_lj.r = np.loadtxt('cnf.inp', skiprows=2, usecols=[0, 1, 2])
-    system_lj.v = np.loadtxt('cnf.inp', skiprows=2, usecols=[3, 4, 5])
+    system_lj.positions = np.loadtxt('cnf.inp', skiprows=2, usecols=[0, 1, 2]).T
+    system_lj.velocities = np.loadtxt('cnf.inp', skiprows=2, usecols=[3, 4, 5]).T
 
     obs = fs.utility.Thermodynamic(block=block)
     system_lj.attach(obs)

@@ -23,4 +23,3 @@ fs.utility.animate_active_2d(
     box=(-120, 120), show=True, frames=100,
     title='vision'
 )
-
