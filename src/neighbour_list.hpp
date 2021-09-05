@@ -1,42 +1,7 @@
 #ifndef NEIGHBOUR_LIST
 #define NEIGHBOUR_LIST
-#include <map>
-#include <array>
-#include <vector>
-#include <iostream>
-#include <Eigen/Dense>
 
-using Conn = std::vector< std::vector <int> >;
-using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
-using ConnMat = Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
-using Indices = std::vector<int>;  // size is n
-using Neighbours = std::vector< Indices >;
-
-using Coord3D = Eigen::Matrix<double, 3, Eigen::Dynamic, Eigen::RowMajor>;  // (3, n)
-using CellIndices3D = Eigen::Array<int, 3, Eigen::Dynamic, Eigen::RowMajor>; // (3, n)
-using Index3D = std::array<int, 3>;  // size is 3
-using Indices3D = std::vector< Index3D >;
-using Head3D = std::map<Index3D, int>;
-
-using Coord2D = Eigen::Matrix<double, 2, Eigen::Dynamic, Eigen::RowMajor>;  // (2, n)
-using CellIndices2D = Eigen::Array<int, 2, Eigen::Dynamic, Eigen::RowMajor>; // (2, n)
-using Index2D = std::array<int, 2>;  // size is 3
-using Indices2D = std::vector< Index2D >;
-using Head2D = std::map<Index2D, int>;
-
-using RotMat = Eigen::Matrix3d;
-using Vec2D = Eigen::Matrix<double, 2, 1>;  // (2, 1)
-using Vec3D = Eigen::Matrix<double, 3, 1>;  // (3, 1)
-
-
-Index3D unravel_index(int index, Index3D shape);
-Index2D unravel_index(int index, Index2D shape);
-
-Indices3D product_3d(Indices& arr);
-Indices3D product_3d(Indices& arr_1, Indices& arr_2, Indices& arr_3);
-
-Indices2D product_2d(Indices& arr);
-Indices2D product_2d(Indices& arr_1, Indices& arr_2);
+#include "core.hpp"
 
 
 template<class T>

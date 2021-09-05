@@ -1,83 +1,9 @@
 #include "vicsek.hpp"
 
-const double PI = 3.141592653589793238463;
-std::default_random_engine generator;
-
-
-Coord3D xyz_to_sphere(Coord3D& xyz){
-    int n = xyz.cols();
-
-    Coord3D sphere(3, xyz.cols());
-    Property r(n);
-
-    r = xyz.colwise().norm();
-
-    sphere.row(0) << r;
-    sphere.row(1) << xyz.row(1).binaryExpr(
-            xyz.row(0), [] (double a, double b) { return atan2(a,b);}
-            ); // azimuth, phi
-
-    sphere.row(2) << asin(xyz.row(2).array() / r);
-
-    return sphere;
-}
-
-
-Coord3D sphere_to_xyz(Coord3D& sphere){
-    int n = sphere.cols();
-    Coord3D xyz(3, n);
-    Property r_xy(n);
-
-    r_xy << sphere.array().row(0) * cos(sphere.row(2).array());
-
-    xyz.row(0) << r_xy * cos(sphere.row(1).array());
-    xyz.row(1) << r_xy * sin(sphere.row(1).array());
-    xyz.row(2) << sphere.array().row(0) * sin(sphere.array().row(2));
-
-    return xyz;
-}
-
-
-Property xy_to_phi(Coord2D& xy){
-    Property phi{1, xy.cols()};
-
-    for (int i = 0; i < phi.cols(); i++){
-        phi(0, i) = atan2(xy(1, i), xy(0, i));
-    }
-
-    return phi;
-}
-
-
-Coord2D phi_to_xy(Property& phi){
-    Coord2D xy{2, phi.cols()};
-    xy.row(0) = cos(phi);
-    xy.row(1) = sin(phi);
-    return xy;
-}
-
-
-Coord2D phi_to_xy(Property& phi, double spd){
-    Coord2D xy{2, phi.cols()};
-    xy.row(0) = cos(phi) * spd;
-    xy.row(1) = sin(phi) * spd;
-    return xy;
-}
-
 
 Vicsek3D::Vicsek3D(int n, double r, double eta, double v0)
-    : noise_(eta), speed_(v0), rc_(r), verlet_list_(r, r + v0), n_(n),
-    positions_(3, n), velocities_(3, n) {
+    : AVS3D{n, eta, v0}, rc_(r), verlet_list_(r, r + v0), positions_(3, n) {
         positions_.setRandom(3, n);
-        Property vz{n}, vphi{n}, vrxy{n};
-        vz.setRandom(); // vz ~ U(-1, 1)
-        vrxy = sqrt(1 - vz.pow(2));
-        vphi.setRandom();
-        vphi *= PI;  // vphi ~ U(-pi, pi)
-        velocities_.row(0) << vrxy * cos(vphi);
-        velocities_.row(1) << vrxy * sin(vphi);
-        velocities_.row(2) << vz;
-        normalise(velocities_, speed_);
     }
 
 
@@ -85,131 +11,6 @@ void Vicsek3D::load_positions(Coord3D positions) {
     this->positions_ = positions;
     verlet_list_.build(this->positions_);
 };
-
-
-void Vicsek3D::load_velocities(Coord3D velocities) {
-    this->velocities_ = velocities;
-    normalise(this->velocities_, speed_);
-};
-
-
-void Vicsek3D::rotate_noise(Coord3D& noise_xyz){
-    /*
-    * Rotate nosie pointing at (0, 0, 1) to direction xyz 
-    * and then add noise_xyz to velocities
-    * here velocities have unit norm
-    */
-    RotMat F, G, R;
-    Vec3D A, B, u, v, w;
-    double x{0}, y{0}, z{0}, rxy{0};
-    for (int i = 0; i < n_; i++){
-        x = velocities_(0, i);
-        y = velocities_(1, i);
-        z = velocities_(2, i);
-        rxy = sqrt(x * x + y * y);
-        A << 0, 0, 1;
-        B << x, y, z;
-        if ((A - B).norm() < 1e-10){
-            velocities_.col(i) = noise_xyz.col(i);
-        } else if ((A + B).norm() < 1e-10){  // B close to (0, 0, -1)
-            velocities_.col(i) << noise_xyz(0, i), noise_xyz(1, i), -noise_xyz(2, i);
-        } else {
-            u = A;
-            v << x / rxy, y / rxy, 0;
-            w = B.cross(A);  // w = B x A
-            G <<   z, -rxy, 0,
-                 rxy,    z, 0,
-                   0,    0, 1;
-            F << u.transpose(), v.transpose(), w.transpose();
-            R = F.inverse() * (G * F);
-            velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
-        }
-    }
-}
-
-
-void Vicsek3D::rotate_noise_xyz(Coord3D& noise_xyz){
-    /*
-    * Rotate nosie pointing at (0, 0, 1) to direction xyz 
-    * and then add noise_xyz to velocities
-    * here velocities have unit norm
-    *   R1 -- rotate (0, 0, 1) to (0, 0, 1)
-    *   R2 -- rotate (0, 0, 1) to (0, 0, 1) in uvw coordinate
-    *   R3 -- elevate (0, 0, 1) in uvw coordinate
-    *   uvw -- basis for uvw coordiante
-    */
-    RotMat R, R1, R2, R3, uvw;
-    Vec3D v;
-    R1 <<  cos(PI/2),   0, sin(PI/2),
-                   0,   1,         0,
-          -sin(PI/2),   0, cos(PI/2);
-    double phi, theta;
-    for (int i = 0; i < n_; i++){
-        v = velocities_.col(i);
-        phi = atan2(v[1], v[0]);
-        theta = asin(v[2] / v.norm());
-        uvw << cos(phi), -sin(phi), 0,
-               sin(phi),  cos(phi), 0,
-                      0,         0, 1;
-        R2 << cos(phi), -sin(phi), 0,
-              sin(phi), cos(phi), 0,
-                      0,        0, 1;
-        R3 << cos(-theta), 0, sin(-theta),
-                        0, 1,           0,
-             -sin(-theta), 0, cos(-theta);
-        R = uvw * R3 * R2 * uvw.inverse() * R1;
-        velocities_.col(i) = R * noise_xyz.col(i) * speed_;
-    }
-}
-
-
-void Vicsek3D::rotate_noise_fast(Coord3D& noise_xyz){
-    /*
-    * Rotate nosie pointing at (0, 0, 1) to direction xyz 
-    * and then add noise_xyz to velocities
-    * here velocities have unit norm
-    */
-
-    RotMat R1, R2, R;
-    Vec3D A, B, v;
-    double c;
-
-    for (int i = 0; i < n_; i++){
-        A << 0, 0, 1;
-        B << velocities_.col(i);
-        v = A.cross(B);  // w = A cross B
-        c = A.dot(B);  // A dot B
-        R1 << 0, -v[2], v[1], // the skew-symmetric matrix
-              v[2], 0, -v[0],
-             -v[1], v[0], 0;
-        R << 1, 0, 0,
-             0, 1, 0,
-             0, 0, 1; 
-        R = R + R1 + (R1 * R1) / (1 + c);
-        velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
-    }
-}
-
-
-void Vicsek3D::add_noise(){
-    Property noise_rxy{1, n_}, noise_phi{1, n_};
-    Coord3D noise_xyz{3, n_};
-
-    std::uniform_real_distribution<> dist_phi(-PI, PI);
-    std::uniform_real_distribution<> dist_z(1 - 2 * noise_, 1);
-
-    auto rand_phi = [&] (double) {return dist_phi(generator);};
-    auto rand_z = [&] (double) {return dist_z(generator);};
-
-    noise_phi.row(0) = Eigen::ArrayXd::NullaryExpr(n_, rand_phi); // phi ~ U(-PI, PI)
-    noise_xyz.row(2) = Eigen::ArrayXd::NullaryExpr(n_, rand_z); //  z ~ U(1 - 2 * noise, 1)
-
-    noise_rxy = sqrt(1 - noise_xyz.array().row(2).pow(2));
-    noise_xyz.row(0) = noise_rxy * cos(noise_phi);
-    noise_xyz.row(1) = noise_rxy * sin(noise_phi);
-
-    rotate_noise(noise_xyz);
-}
 
 
 void Vicsek3D::move(bool rebuild){
@@ -220,7 +21,6 @@ void Vicsek3D::move(bool rebuild){
     add_noise();
     positions_ += velocities_;
 }
-
 
 void Vicsek3D::move_no_nl(){
     connections_ = get_connections(positions_, rc_);
@@ -415,27 +215,9 @@ void Vicsek3DPBCVN::move_no_nl(){
 
 
 Vicsek2D::Vicsek2D(int n, double r, double eta, double v0)
-    : noise_(eta), speed_(v0), rc_(r), verlet_list_(r, r + v0), n_(n),
-      positions_(2, n), velocities_(2, n) {
+    : AVS2D{n, eta, v0}, rc_(r), verlet_list_(r, r + v0), positions_(2, n){
           positions_.setRandom();
-          Property vr{n}, vphi{n};
-          vr.setConstant(speed_);
-          vphi.setRandom();
-          vphi *= PI;  // vphi ~ U(-pi, pi)
-          velocities_.row(0) << vr * cos(vphi);
-          velocities_.row(1) << vr * sin(vphi);
     }
-
-
-void Vicsek2D::add_noise(){
-    Property noise_phi{1, n_};
-    Property phi = xy_to_phi(velocities_);
-    noise_phi.setRandom(); // ~ U(-1, 1)
-    noise_phi *= PI * noise_; // phi ~ U(-PI * eta, PI * eta)
-    phi += noise_phi;
-    velocities_.row(0) = speed_ * cos(phi);
-    velocities_.row(1) = speed_ * sin(phi);
-}
 
 
 void Vicsek2D::move(bool rebuild){
@@ -569,7 +351,7 @@ void Vicsek2DPBCVNCO::update_velocity(){
     double a = alpha_ / speed_;
 
     noise_phi.setRandom(); // ~ U(-1, 1)
-    noise_phi *= PI; // phi ~ U(-PI, PI)
+    noise_phi *= M_PI; // phi ~ U(-PI, PI)
 
     noise_xy.row(0) = cos(noise_phi) * noise_; // -> eta * xi_i^t
     noise_xy.row(1) = sin(noise_phi) * noise_;

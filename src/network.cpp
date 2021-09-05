@@ -5,7 +5,7 @@ std::mt19937 g(rd());
 
 
 Network3D::Network3D(int n, int k, double eta)
-    : Vicsek3D{n, 1.0, eta, 1.0}, k_(k) {
+    : AVS3D{n, eta, 1.0}, k_(k) {
         for (int i = 0; i < n; i++){
             indices_.push_back(i);
         }
