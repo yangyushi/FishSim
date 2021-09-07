@@ -3,21 +3,23 @@
 #include <chrono>
 
 int main(){
-    int n = 10;
+    int n = 1000;
     int total_steps = 100;
     int jump = 1;
-    int update_step = 100;
 
-    Vicsek3DPBC system{
-        n, 1.0, 0.3, 10, 0.05
+    Vicsek2DPBC system{
+        n, 1.0, 0.3, 20, 0.05
     };
-    dump(system, "test.xyz");
 
     std::cout << "system created" << std::endl;
 
+    dump(system, "test.xyz");
+
+    std::cout << "dump okay" << std::endl;
+
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for (int step=0; step < total_steps; step++){
-        system.move();
+        system.move_no_nl();
         if (step % jump == 0) dump(system, "test.xyz");
     }
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -31,16 +33,11 @@ int main(){
 
     begin = std::chrono::steady_clock::now();
     for (int step=0; step < total_steps; step++){
-        if (step % update_step == 0){
-            system.move(true);
-        }
-        else {
-            system.move(false);
-        }
+        system.move(true);
         if (step % jump == 0) dump(system, "test.xyz");
     }
     end = std::chrono::steady_clock::now();
-    std::cout << "Time spent without neighbour list: "
+    std::cout << "Time spent with neighbour list: "
          << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()
          << "[ms]" << std::endl;
     return 0;
