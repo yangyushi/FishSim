@@ -198,9 +198,9 @@ RotMat get_rotation_matrix(double x, double y, double z){
 
 
 AVS2D::AVS2D(int n, double noise, double speed)
-    : n_(n), speed_(speed), noise_(noise) {
+    : n_(n), speed_(speed), velocities_(dim_, n), noise_(noise) {
     // generate random vector on a unit circle
-    Property vr{n}, vphi{n_};
+    Property vr{n_}, vphi{n_};
     vr.setConstant(speed_);
     vphi.setRandom();
     vphi *= M_PI;  // vphi ~ U(-pi, pi)
@@ -225,7 +225,7 @@ void AVS2D::add_noise(){
 
 
 AVS3D::AVS3D(int n, double noise, double speed)
-    : n_(n), speed_(speed), noise_(noise) {
+    : n_(n), speed_(speed), velocities_(dim_, n), noise_(noise){
     Property vz{n}, vphi{n}, vrxy{n};
     vz.setRandom(); // vz ~ U(-1, 1)
     vrxy = sqrt(1 - vz.pow(2));

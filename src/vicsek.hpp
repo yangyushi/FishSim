@@ -91,7 +91,6 @@ class Vicsek2D : public AVS2D{
         VerletList<Coord2D> verlet_list_;
 
     public:
-        int n_;
         Coord2D positions_;
         Vicsek2D(int n, double r, double eta, double v0);
         void move(bool rebuild);

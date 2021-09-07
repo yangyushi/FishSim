@@ -41,8 +41,6 @@ Vicsek3DPBC::Vicsek3DPBC(int n, double r, double eta, double box, double v0)
         }
         positions_.setRandom(3, n);
         positions_ = (positions_.array() + 1) / 2 * box_;
-        velocities_.setRandom(3, n);
-        normalise(velocities_, speed_);
     }
 
 
@@ -246,10 +244,8 @@ Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
             int sc = floor(box / L_per_particle / 2);
             cell_list_.update_sc(sc);
         }
-        positions_.setRandom(2, n);
+        positions_.setRandom(2, n_);
         positions_ = (positions_.array() + 1) / 2 * box;
-        velocities_.setRandom(2, n);
-        normalise(velocities_, v0);
     }
 
 
