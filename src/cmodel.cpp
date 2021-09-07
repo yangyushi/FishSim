@@ -6,14 +6,19 @@
 #include <pybind11/eigen.h>
 #include <string>
 
+#define STRINGIFY(x) #x
+#define MACRO_STRINGIFY(x) STRINGIFY(x)
+
+
 namespace py = pybind11;
 
 
 const char* docstring_vicsek_2d =\
     "2D Vicsek simulation with scarlar (intrinsic) noise"\
+    " and periodic boundary condition"\
+    "\n\n\n"\
     "Args:\n\n"\
     "   n (:obj:`int`): number of particles in the system\n"\
-    "   box (:obj:`float`): the size of the cubic box\n"\
     "   eta (:obj:`float`): the magnitude of noise, from 0 to 1\n"\
     "   v0 (:obj:`float`): the speed in the simulation\n"\
     "   r (:obj:`float`): the interaction range\n"\
@@ -24,7 +29,7 @@ const char* docstring_vicsek_2d =\
     "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n\n"\
     "Return:\n"\
     "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
-    " in each frame, shape (run_steps, n, 6)\n"\
+    " in each frame, shape (run_steps, n, 4)\n"\
     ;
 
 
@@ -862,7 +867,7 @@ PYBIND11_MODULE(cmodel, m){
         )
         .def("move", &Network3D::move)
         .def("evolve", &Network3D::evolve)
-        .def("get_polarisaion", &Network3D::get_polarisation)
+        .def("get_polarisation", &Network3D::get_polarisation)
         .def("get_velocities", &Network3D::get_velocities)
         .def("load_velocities", &Network3D::load_velocities)
         .def_property(
@@ -882,7 +887,7 @@ PYBIND11_MODULE(cmodel, m){
         )
         .def("move", &Vicsek3D::move, py::arg("rebuild")=true)
         .def("evolve", &Vicsek3D::evolve, py::arg("steps"), py::arg("rebuild")=true)
-        .def("get_polarisaion", &Vicsek3D::get_polarisation)
+        .def("get_polarisation", &Vicsek3D::get_polarisation)
         .def("get_velocities", &Vicsek3D::get_velocities)
         .def("get_positions", &Vicsek3D::get_positions)
         .def("load_velocities", &Vicsek3D::load_velocities)
@@ -909,7 +914,7 @@ PYBIND11_MODULE(cmodel, m){
         )
         .def("move", &Vicsek3DPBC::move, py::arg("rebuild")=true)
         .def("evolve", &Vicsek3DPBC::evolve, py::arg("steps"), py::arg("rebuild")=true)
-        .def("get_polarisaion", &Vicsek3DPBC::get_polarisation)
+        .def("get_polarisation", &Vicsek3DPBC::get_polarisation)
         .def("get_velocities", &Vicsek3DPBC::get_velocities)
         .def("get_positions", &Vicsek3DPBC::get_positions)
         .def("load_velocities", &Vicsek3DPBC::load_velocities)
@@ -920,6 +925,70 @@ PYBIND11_MODULE(cmodel, m){
         .def_property("velocities",
                 &Vicsek3DPBC::get_velocities, &Vicsek3DPBC::load_velocities,
                 py::return_value_policy::copy
+        )
+        .def_readonly("dim", &Vicsek3DPBC::dim_);
+
+    py::class_<Vicsek3DPBCInertia>(m, "Vicsek3DPBCInertia")
+        .def(
+            py::init<
+                int, double, double, double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("r"),
+            pybind11::arg("eta"),
+            pybind11::arg("box"),
+            pybind11::arg("v0"),
+            pybind11::arg("alpha")
+        )
+        .def(
+            "move", &Vicsek3DPBCInertia::move,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+
+            Args:
+                rebuild (bool): if true, the neighobur will be\
+                    used to accelerate the calculation.
+            )---",
+            py::arg("rebuild")=true
+        )
+        .def(
+            "evolve", &Vicsek3DPBCInertia::evolve,
+            R"---(
+            Advance the dynamic, move multiple Monte-Carlo steps
+
+            Args:
+                steps (int): the number of Monte-Carlo steps to move.
+                rebuild (bool): if true, the neighobur will be\
+                    used to accelerate the calculation.
+
+            )---",
+            py::arg("steps"), py::arg("rebuild")=true
+        )
+        .def(
+            "get_polarisation", &Vicsek3DPBCInertia::get_polarisation,
+            "Calculate the polarisation of current state of the system",
+            py::return_value_policy::copy
+        )
+        .def(
+            "get_velocities", &Vicsek3DPBCInertia::get_velocities,
+            "Retrieve the current velocities as numpy array of the system"
+        )
+        .def(
+            "get_positions", &Vicsek3DPBC::get_positions,
+            "Retrieve the current positions as numpy array of the system"
+        )
+        .def(
+            "load_velocities", &Vicsek3DPBC::load_velocities,
+            "Set the current velocities of the system",
+            py::arg("velocities")
+        )
+        .def_property("positions",
+            &Vicsek3DPBC::get_positions, &Vicsek3DPBC::load_positions,
+            py::return_value_policy::copy
+        )
+        .def_property("velocities",
+            &Vicsek3DPBC::get_velocities, &Vicsek3DPBC::load_velocities,
+            py::return_value_policy::copy
         )
         .def_readonly("dim", &Vicsek3DPBC::dim_);
 }
