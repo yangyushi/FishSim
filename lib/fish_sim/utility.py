@@ -36,8 +36,8 @@ class FuncAnimationDisposable(animation.FuncAnimation):
 
 
 def animate(
-    system, r=100, jump=100, box=None, save='',
-        fps=60, show=False, frames=100, repeat=False, title=""
+    system, r=100, jump=100, box=None, save='', fps=60,
+    show=False, frames=100, interval=1, repeat=False, title=""
 ):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     if system.dim == 2:
@@ -95,7 +95,7 @@ def animate(
         markersize=r
     )[0]
     ani = FuncAnimationDisposable(
-        fig, update, frames=frames, fargs=(system, scatter), interval=1,
+        fig, update, frames=frames, fargs=(system, scatter), interval=interval,
         blit=False, repeat=repeat
     )
     if show:
