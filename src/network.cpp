@@ -35,7 +35,7 @@ Graph random_regular_graph(int d, int n){
     if (n * d % 2 == 0){
         throw("In valid argument, n * d shuold be even");
     }
-    if (not (0 <= d <= n)) {
+    if ((d < 0) or (d >= n)) {
         throw("the 0 <= d < n inequality must be satisfied");
     }
     if (d == 0) {return Graph(n);}
