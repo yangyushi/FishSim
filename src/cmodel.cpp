@@ -728,6 +728,17 @@ py::array_t<double> ism_3d_pbc(
 }
 
 
+ConnMat get_random_vnm_adjecancy_matrix(int d, int n, bool include_self){
+    Graph graph;
+    if (include_self){
+        graph = random_vnm_graph_force_self(d, n);
+    } else {
+        graph = random_vnm_graph(d, n);
+    }
+    return graph.as_matrix();
+}
+
+
 PYBIND11_MODULE(cmodel, m){
     m.doc() = "Simulating different models to understand the collective behaviours";
 
@@ -856,6 +867,22 @@ PYBIND11_MODULE(cmodel, m){
         py::arg("use_nl")=false
     );
 
+
+    m.def(
+        "get_random_vnm_adjecancy_matrix", &get_random_vnm_adjecancy_matrix,
+        R"---(
+        Generate a random adjecancy matrix for the vertorial network
+
+        Args:
+            k (int): the number of neighbours of each node.
+            n (int): the total number of nodes.
+            include_self (bool): if true, all nodes are forced to
+                have links to themselves.
+        Return:
+            np.ndarray: the adjecancy matrix of the graph.
+        )---",
+        py::arg("k"), py::arg("n"), py::arg("include_self")=false
+    );
 
     py::class_<Vicsek3D>(m, "Vicsek3D")
         .def(

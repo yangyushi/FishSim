@@ -20,7 +20,7 @@ orders = []
 t_cpp = 0
 for noise in noises:
     t0 = time.time()
-    result = fs.cmodel.vicsek_3d_pbc(N, box, noise, spd, r, 1000, 1000, use_nl=True)  # (T, n, 6)
+    result = fs.cmodel.vicsek_3d_pbc(N, box, noise, spd, r, 1000, 1000, use_nl=False)  # (T, n, 6)
     t_cpp += time.time() - t0
     order = np.sqrt((result[:, :, 3:].mean(1) ** 2).sum(-1)).mean()
     orders.append(order / spd)

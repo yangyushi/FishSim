@@ -22,8 +22,12 @@ struct Graph {
 
 Graph random_regular_graph(int d, int n);
 
-// random graph where all nodes have k random neighbours
-Graph random_vnc_graph(int d, int n);
+// random graph where all nodes have d random neighbours
+Graph random_vnm_graph(int d, int n);
+
+// random graph where all nodes have d random neighbours, must
+// include itself
+Graph random_vnm_graph_force_self(int d, int n);
 
 /*
  * The vectorial network model introduced by Aldana and Huepe in 2003
