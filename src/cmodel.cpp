@@ -856,24 +856,6 @@ PYBIND11_MODULE(cmodel, m){
         py::arg("use_nl")=false
     );
 
-    py::class_<Network3D>(m, "Network3D")
-        .def(
-            py::init<
-                int, int, double
-            >(),
-            pybind11::arg("n"),
-            pybind11::arg("k"),
-            pybind11::arg("eta")
-        )
-        .def("move", &Network3D::move)
-        .def("evolve", &Network3D::evolve)
-        .def("get_polarisation", &Network3D::get_polarisation)
-        .def("get_velocities", &Network3D::get_velocities)
-        .def("load_velocities", &Network3D::load_velocities)
-        .def_property(
-                "velocities", &Network3D::get_velocities,
-                &Network3D::load_velocities, py::return_value_policy::copy
-                );
 
     py::class_<Vicsek3D>(m, "Vicsek3D")
         .def(
@@ -974,21 +956,65 @@ PYBIND11_MODULE(cmodel, m){
             "Retrieve the current velocities as numpy array of the system"
         )
         .def(
-            "get_positions", &Vicsek3DPBC::get_positions,
+            "get_positions", &Vicsek3DPBCInertia::get_positions,
             "Retrieve the current positions as numpy array of the system"
         )
         .def(
-            "load_velocities", &Vicsek3DPBC::load_velocities,
+            "load_velocities", &Vicsek3DPBCInertia::load_velocities,
             "Set the current velocities of the system",
             py::arg("velocities")
         )
         .def_property("positions",
-            &Vicsek3DPBC::get_positions, &Vicsek3DPBC::load_positions,
+            &Vicsek3DPBCInertia::get_positions, &Vicsek3DPBCInertia::load_positions,
             py::return_value_policy::copy
         )
         .def_property("velocities",
-            &Vicsek3DPBC::get_velocities, &Vicsek3DPBC::load_velocities,
+            &Vicsek3DPBCInertia::get_velocities, &Vicsek3DPBCInertia::load_velocities,
             py::return_value_policy::copy
         )
-        .def_readonly("dim", &Vicsek3DPBC::dim_);
+        .def_readonly("dim", &Vicsek3DPBCInertia::dim_);
+
+    py::class_<Network3D>(m, "Network3D")
+        .def(
+            py::init<int, int, double>(),
+            pybind11::arg("n"), pybind11::arg("k"), pybind11::arg("eta")
+        )
+        .def(
+            "move", &Network3D::move,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+
+            Args:
+                new_graph (bool): if true, a new graph will be
+                    generated.
+            )---",
+            py::arg("new_graph")=true
+        )
+        .def(
+            "evolve", &Network3D::evolve,
+            R"---(
+            Advance the dynamic, move multiple Monte-Carlo steps
+
+            Args:
+                steps (int): the number of Monte-Carlo steps to move.\
+                dynamic (int): 0 = quenched dynamic, no graph update.\
+                    1 = anneleda dynamic, graph update every step.
+
+            )---",
+            py::arg("steps"), py::arg("rebuild")=true
+        )
+        .def(
+            "get_polarisation", &Network3D::get_polarisation,
+            "Calculate the polarisation of current state of the system",
+            py::return_value_policy::copy
+        )
+        .def(
+            "get_velocities", &Network3D::get_velocities,
+            "Retrieve the current velocities as numpy array of the system"
+        )
+        .def_property("velocities",
+            &Network3D::get_velocities, &Network3D::load_velocities,
+            py::return_value_policy::copy
+        )
+        .def_readonly("dim", &Network3D::dim_);
 }

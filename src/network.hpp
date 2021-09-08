@@ -2,6 +2,7 @@
 #define NETWORK
 
 #include <algorithm>
+#include <numeric>
 #include "core.hpp"
 
 using Edges = Indices2D;  // vector < array< int, 2 > >
@@ -9,16 +10,20 @@ using Nodes = std::vector< int >;
 
 
 struct Graph {
-    Edges edges_;
     Nodes nodes_;
+    Edges edges_;
+    Graph();
     Graph(int n);
+    Graph(Nodes nodes, Edges edges);
     Conn as_connections();
     ConnMat as_matrix();
-    inline int size() {return *std::max_element(nodes_.begin(), nodes_.end()) + 1;}
+    inline int size() { return nodes_.size(); }
 };
 
 Graph random_regular_graph(int d, int n);
 
+// random graph where all nodes have k random neighbours
+Graph random_vnc_graph(int d, int n);
 
 /*
  * The vectorial network model introduced by Aldana and Huepe in 2003
@@ -26,15 +31,14 @@ Graph random_regular_graph(int d, int n);
 class Network3D : public AVS3D{
     protected:
         int k_; // connection number 
-        std::vector<int> indices_;
         int dynamic_ = 0;  // 0 - quenched dynamic; 1 - annealed dynamic
         Graph graph_;
 
     public:
         Network3D(int n, int k, double eta);
         void random_align();
-        void move();
-        void evolve(int steps);
+        void move(bool new_graph);
+        void evolve(int steps, int dynamic);
 };
 
 #endif
