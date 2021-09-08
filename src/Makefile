@@ -4,10 +4,16 @@ CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC\
 		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include -I$(prefix)/include/eigen3 
 LINKFLAGS = -lomp
 
-main: main.cpp vicsek.o neighbour_list.o network.o core.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) main.cpp vicsek.o neighbour_list.o network.o core.o
+vicsek: test_vicsek.cpp vicsek.o neighbour_list.o network.o core.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_vicsek.cpp vicsek.o neighbour_list.o network.o core.o
 	rm -f test.xyz
 	./a.out
+	rm a.out
+
+network: test_network.cpp vicsek.o neighbour_list.o network.o core.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_network.cpp vicsek.o neighbour_list.o network.o core.o
+	./a.out
+	rm a.out
 
 network.o: network.cpp
 	$(CC) $(CPPFLAGS) -c network.cpp -o network.o

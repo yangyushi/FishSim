@@ -553,4 +553,3 @@ void InertialSpin3DPBC::move_no_nl(){
     fix_positions();
     normalise(velocities_, speed_);
 }
-
