@@ -52,9 +52,9 @@ Graph random_vnm_graph(int d, int n){
 
     for (int i = 0; i < n; i++){
         Nodes neighbours {};
-        bool is_duplicate = false;
         for (int j = 0; j < d; j++){
             int i2 = std::rand() % n;
+            bool is_duplicate = false;
             for (auto neighbour : neighbours) {
                 if (i2 == neighbour) {is_duplicate = true;}
             }
@@ -62,6 +62,7 @@ Graph random_vnm_graph(int d, int n){
                 j--;
             } else {
                 edges.push_back(std::array<int, 2> {i, i2});
+                neighbours.push_back(i2);
             }
         }
     }
@@ -78,10 +79,10 @@ Graph random_vnm_graph_force_self(int d, int n){
         bool self_included = false;
 
         Nodes neighbours {};
-        bool is_duplicate = false;
         for (int j = 0; j < d - 1; j++){
             int i2 = std::rand() % n;
 
+            bool is_duplicate = false;
             for (auto neighbour : neighbours) {
                 if (i2 == neighbour) {is_duplicate = true;}
             }
@@ -89,11 +90,21 @@ Graph random_vnm_graph_force_self(int d, int n){
                 j--;
             } else {
                 edges.push_back(std::array<int, 2> {i1, i2});
+                neighbours.push_back(i2);
                 if (i2 == i1){ self_included = true; }
             }
         }
         if (self_included){
-            edges.push_back(std::array<int, 2> {i1, nodes[d - 1]});
+            bool should_continue = true;
+            int i2;
+            while (should_continue){
+                i2 = std::rand()  % n;
+                should_continue = false;
+                for (auto neighbour : neighbours) {
+                    if (i2 == neighbour) {should_continue = true;}
+                }
+            }
+            edges.push_back(std::array<int, 2> {i1, i2});
         } else {
             edges.push_back(std::array<int, 2> {i1, i1});
         }
