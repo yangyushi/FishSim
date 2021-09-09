@@ -32,4 +32,3 @@ if __name__ == "__main__":
     result = test_network()
     plt.plot(*result, marker='o')
     plt.savefig('network-fast.pdf')
-    plt.show()

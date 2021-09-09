@@ -38,6 +38,7 @@ class Network3D : public AVS3D{
         int k_; // connection number 
         int dynamic_ = 0;  // 0 - quenched dynamic; 1 - annealed dynamic
         Graph graph_;
+        Conn connections_;
 
     public:
         Network3D(int n, int k, double eta);

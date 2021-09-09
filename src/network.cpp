@@ -192,14 +192,16 @@ Graph random_vnm_graph_force_self(int d, int n){
 Network3D::Network3D(int n, int k, double eta)
     : AVS3D{n, eta, 1.0}, k_(k) {
         graph_ = random_vnm_graph(k, n);
+        connections_ = graph_.as_connections();
 }
 
 
 void Network3D::move(bool new_graph){
     if (new_graph){
         graph_ = random_vnm_graph(k_, n_);
+        connections_ = graph_.as_connections();
     }
-    vicsek_align(velocities_, graph_.as_connections());
+    vicsek_align(velocities_, connections_);
     normalise(velocities_);
     add_noise();
 }
