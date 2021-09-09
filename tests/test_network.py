@@ -5,8 +5,8 @@ import fish_sim as fs
 
 
 def test_network():
-    n = 100
-    k = 20
+    n = 50
+    k = 40
     eta_vals = np.linspace(0, 1, 20)
 
     pol_vals = []
@@ -32,4 +32,4 @@ if __name__ == "__main__":
     result = test_network()
     plt.plot(*result, marker='o')
     plt.savefig('network-fast.pdf')
-
+    plt.show()

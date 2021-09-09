@@ -5,8 +5,21 @@ std::mt19937 g(rd());
 
 Graph::Graph() : nodes_{}, edges_{} {;}
 Graph::Graph(Nodes n, Edges e) : nodes_{n}, edges_{e} {;}
-Graph::Graph(int n) : nodes_{n}{
+Graph::Graph(int n) : nodes_(n){
     std::iota(nodes_.begin(), nodes_.end(), 0);
+}
+Graph::Graph(ConnMat adj_mat) : nodes_{}, edges_{}{
+    int n = adj_mat.rows();
+    for (int i = 0; i < n; i++){
+        nodes_.push_back(i);
+    }
+    for (int i = 0; i < n; i++){
+    for (int j = 0; j < n; j++){
+        if (adj_mat(i, j) > 0){
+            edges_.push_back(std::array<int, 2> {i, j});
+        }
+    }
+    }
 }
 
 Conn Graph::as_connections(){
@@ -43,73 +56,136 @@ Graph random_regular_graph(int d, int n){
 }
 
 
-Graph random_vnm_graph(int d, int n){
-    Edges edges{};
-    Nodes nodes {};
-    for (int i = 0; i < n; i++){
-        nodes.push_back(i);
-    }
-
-    for (int i = 0; i < n; i++){
-        Nodes neighbours {};
-        for (int j = 0; j < d; j++){
-            int i2 = std::rand() % n;
-            bool is_duplicate = false;
-            for (auto neighbour : neighbours) {
-                if (i2 == neighbour) {is_duplicate = true;}
-            }
-            if (is_duplicate){
-                j--;
-            } else {
-                edges.push_back(std::array<int, 2> {i, i2});
-                neighbours.push_back(i2);
-            }
+bool check_existence(int i, Nodes &collection){
+    for (auto element : collection){
+        if (i == element){
+            return true;
         }
     }
-    return Graph{nodes, edges};
+    return false;
+}
+
+void collect_vnm_edges(int i, int d, int n, Edges& edges){
+    Nodes neighbours {};
+    int i2;
+    for (int j = 0; j < d; j++){
+        i2 = std::rand() % n;
+        bool is_duplicate = check_existence(i2, neighbours);
+        if (is_duplicate){
+            j--;
+        } else {
+            edges.push_back(std::array<int, 2> {i, i2});
+            neighbours.push_back(i2);
+        }
+    }
+}
+
+
+void collect_vnm_edges_force_diag(int i1, int d, int n, Edges& edges){
+    Nodes neighbours {};
+    bool self_included = false;
+    for (int j = 0; j < d - 1; j++){
+        int i2 = std::rand() % n;
+        bool is_duplicate = check_existence(i2, neighbours);
+        if (is_duplicate){
+            j--;
+        } else {
+            edges.push_back(std::array<int, 2> {i1, i2});
+            neighbours.push_back(i2);
+            if (i2 == i1){ self_included = true; }
+        }
+    }
+    if (self_included){
+        bool should_continue = true;
+        int i2;
+        while (should_continue){
+            should_continue = false;
+            i2 = std::rand() % n;
+            for (auto neighbour : neighbours) {
+                if (i2 == neighbour) {should_continue = true;}
+            }
+        }
+        edges.push_back(std::array<int, 2> {i1, i2});
+    } else {
+        edges.push_back(std::array<int, 2> {i1, i1});
+    }
+}
+
+
+void collect_vnm_edges_no_diag(int i1, int d, int n, Edges& edges){
+    Nodes neighbours {};
+    for (int j = 0; j < d; j++){
+        int i2 = std::rand() % n;
+        bool is_duplicate = check_existence(i2, neighbours);
+        is_duplicate = is_duplicate or (i1 == i2);
+        if (is_duplicate){
+            j--;
+        } else {
+            edges.push_back(std::array<int, 2> {i1, i2});
+            neighbours.push_back(i2);
+        }
+    }
+}
+
+
+Graph random_vnm_graph(int d, int n){
+    if (d == 0){
+        return Graph(n);
+    } else if (d == n) {
+        ConnMat adj_mat {n, n};
+        adj_mat.setConstant(1);
+        return Graph(adj_mat);
+    } else {
+        Nodes nodes {};
+        for (int i = 0; i < n; i++){
+            nodes.push_back(i);
+        }
+        Edges edges{};
+        if (d < n / 2){
+            for (int i = 0; i < n; i++){
+                collect_vnm_edges(i, d, n, edges);
+            }
+            return Graph(nodes, edges);
+        } else {
+            for (int i = 0; i < n; i++){
+                collect_vnm_edges(i, n - d, n, edges);
+            }
+            Graph g_inv {nodes, edges};
+            ConnMat adj_mat_inv = g_inv.as_matrix();
+            return Graph (1 - adj_mat_inv); 
+        }
+    }
 }
 
 
 Graph random_vnm_graph_force_self(int d, int n){
-    Edges edges ;
-    Nodes nodes(n);
-    std::iota(nodes.begin(), nodes.end(), 0);
-
-    for (int i1 = 0; i1 < n; i1++){
-        bool self_included = false;
-
-        Nodes neighbours {};
-        for (int j = 0; j < d - 1; j++){
-            int i2 = std::rand() % n;
-
-            bool is_duplicate = false;
-            for (auto neighbour : neighbours) {
-                if (i2 == neighbour) {is_duplicate = true;}
-            }
-            if (is_duplicate){
-                j--;
-            } else {
-                edges.push_back(std::array<int, 2> {i1, i2});
-                neighbours.push_back(i2);
-                if (i2 == i1){ self_included = true; }
-            }
+    if (d == 0) {
+        return Graph(n);
+    } else if (d == n) {
+        ConnMat adj_mat {n, n};
+        adj_mat.setConstant(1);
+        return Graph(adj_mat);
+    } else {
+        Nodes nodes {};
+        for (int i = 0; i < n; i++){
+            nodes.push_back(i);
         }
-        if (self_included){
-            bool should_continue = true;
-            int i2;
-            while (should_continue){
-                i2 = std::rand()  % n;
-                should_continue = false;
-                for (auto neighbour : neighbours) {
-                    if (i2 == neighbour) {should_continue = true;}
-                }
+
+        Edges edges {};
+        if (d < n / 2){
+            for (int i = 0; i < n; i++){
+                collect_vnm_edges_force_diag(i, d, n, edges);
             }
-            edges.push_back(std::array<int, 2> {i1, i2});
+            return Graph{nodes, edges};
         } else {
-            edges.push_back(std::array<int, 2> {i1, i1});
+            for (int i = 0; i < n; i++){
+                collect_vnm_edges_no_diag(i, n - d, n, edges);
+            }
+            Graph g_inv {nodes, edges};
+            ConnMat adj_mat_inv = g_inv.as_matrix();
+            return Graph (1 - adj_mat_inv); 
         }
     }
-    return Graph{nodes, edges};
 }
 
 

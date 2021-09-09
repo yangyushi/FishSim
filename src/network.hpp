@@ -14,6 +14,7 @@ struct Graph {
     Edges edges_;
     Graph();
     Graph(int n);
+    Graph(ConnMat adj_mat);
     Graph(Nodes nodes, Edges edges);
     Conn as_connections();
     ConnMat as_matrix();
