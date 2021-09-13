@@ -48,12 +48,24 @@ class Network3D : public AVS3D{
         int dynamic_ = 0;  // 0 - quenched dynamic; 1 - annealed dynamic
         Graph graph_;
         Conn connections_;
+    
+    private:
+        void update_graph();
 
     public:
         Network3D(int n, int k, double eta);
         void random_align();
         void move(bool new_graph);
         void evolve(int steps, int dynamic);
+};
+
+
+class Network3DRG : public Network3D {
+    public:
+        Network3DRG(int n, int k, double eta);
+
+    private:
+        void update_graph();
 };
 
 #endif

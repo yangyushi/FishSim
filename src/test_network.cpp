@@ -12,7 +12,7 @@ int main(){
     g = random_vnm_graph_force_self(k, n);
     std::cout << "graph functions okay" << std::endl;
 
-    Network3D system{n, k, 0.3};
+    Network3DRG system{n, k, 0.3};
     std::cout << "system creation okay" << std::endl;
 
     for (int step=0; step < total_steps; step++){
