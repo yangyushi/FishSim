@@ -1,12 +1,19 @@
 #ifndef NETWORK
 #define NETWORK
 
+#include <unordered_set>
+#include <unordered_map>
 #include <algorithm>
 #include <numeric>
 #include "core.hpp"
 
-using Edges = Indices2D;  // vector < array< int, 2 > >
+
+struct PairHasher{
+    std::size_t operator()(const Index2D&) const;
+};
+
 using Nodes = std::vector< int >;
+using Edges = std::unordered_set<Index2D, PairHasher>;
 
 
 struct Graph {
@@ -15,12 +22,14 @@ struct Graph {
     Graph();
     Graph(int n);
     Graph(ConnMat adj_mat);
-    Graph(Nodes nodes, Edges edges);
+    Graph(Nodes nodes, Edges edges, bool directional);
     Conn as_connections();
     ConnMat as_matrix();
     inline int size() { return nodes_.size(); }
 };
 
+
+// random simple regular graph
 Graph random_regular_graph(int d, int n);
 
 // random graph where all nodes have d random neighbours

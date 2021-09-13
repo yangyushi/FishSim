@@ -739,6 +739,21 @@ ConnMat get_random_vnm_adjecancy_matrix(int d, int n, bool include_self){
 }
 
 
+ConnMat get_random_regular_adjecancy_matrix(int d, int n, bool include_self){
+    Graph graph;
+    if (include_self){
+        graph = random_regular_graph(d - 1, n);
+        for (auto node : graph.nodes_){
+            graph.edges_.emplace(Index2D{node, node});
+        }
+    } else {
+        graph = random_regular_graph(d, n);
+    }
+    return graph.as_matrix();
+}
+
+
+
 PYBIND11_MODULE(cmodel, m){
     m.doc() = "Simulating different models to understand the collective behaviours";
 
@@ -867,7 +882,6 @@ PYBIND11_MODULE(cmodel, m){
         py::arg("use_nl")=false
     );
 
-
     m.def(
         "get_random_vnm_adjecancy_matrix", &get_random_vnm_adjecancy_matrix,
         R"---(
@@ -883,6 +897,24 @@ PYBIND11_MODULE(cmodel, m){
         )---",
         py::arg("k"), py::arg("n"), py::arg("include_self")=false
     );
+
+    m.def(
+        "get_random_regular_adjecancy_matrix", &get_random_regular_adjecancy_matrix,
+        R"---(
+        Generate a random adjecancy matrix for a random graph
+
+        Args:
+            k (int): the number of neighbours of each node.
+            n (int): the total number of nodes.
+            include_self (bool): if true, all nodes are forced to
+                have links to themselves. If false, no self-loop
+                is allowed. (The graph is a simple graph.)
+        Return:
+            np.ndarray: the adjecancy matrix of the graph.
+        )---",
+        py::arg("k"), py::arg("n"), py::arg("include_self")=false
+    );
+
 
     py::class_<Vicsek3D>(m, "Vicsek3D")
         .def(

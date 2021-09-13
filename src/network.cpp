@@ -4,10 +4,19 @@ std::random_device rd;
 std::mt19937 g(rd());
 
 Graph::Graph() : nodes_{}, edges_{} {;}
-Graph::Graph(Nodes n, Edges e) : nodes_{n}, edges_{e} {;}
+
+Graph::Graph(Nodes n, Edges e, bool directional) : nodes_{n}, edges_{e} {
+    if (not directional){
+        for (auto& edge : e){
+            edges_.emplace(Index2D {edge[1], edge[0]});
+        }
+    }
+}
+
 Graph::Graph(int n) : nodes_(n){
     std::iota(nodes_.begin(), nodes_.end(), 0);
 }
+
 Graph::Graph(ConnMat adj_mat) : nodes_{}, edges_{}{
     int n = adj_mat.rows();
     for (int i = 0; i < n; i++){
@@ -16,7 +25,7 @@ Graph::Graph(ConnMat adj_mat) : nodes_{}, edges_{}{
     for (int i = 0; i < n; i++){
     for (int j = 0; j < n; j++){
         if (adj_mat(i, j) > 0){
-            edges_.push_back(std::array<int, 2> {i, j});
+            edges_.emplace(Index2D{i, j});
         }
     }
     }
@@ -44,19 +53,101 @@ ConnMat Graph::as_matrix(){
 }
 
 
-Graph random_regular_graph(int d, int n){
-    if (n * d % 2 == 0){
-        throw("In valid argument, n * d shuold be even");
+std::size_t PairHasher::operator()(const Index2D& a) const {
+    std::size_t h = 0;
+    for (auto e : a) {
+        h ^= std::hash<int>{}(e)  + 0x9e3779b9 + (h << 6) + (h >> 2);
     }
-    if ((d < 0) or (d >= n)) {
-        throw("the 0 <= d < n inequality must be satisfied");
-    }
-    if (d == 0) {return Graph(n);}
-    return Graph(n);
+    return h;
 }
 
 
-bool check_existence(int i, Nodes &collection){
+void _sort_pair(int& i1, int& i2){
+    if (i1 > i2) {
+        int tmp = i1;
+        i1 = i2;
+        i2 = tmp;
+    }
+}
+
+/* 
+ * pairs in edges are sorted, also i1 shuold < i2
+ *   the unordered_set is MUCH faster than std::vector
+*/
+bool _not_in_edges(int i1, int i2, const Edges& edges){
+    auto query = edges.find(Index2D{i1, i2});
+    return query == edges.end();
+}
+
+
+bool _is_suitable_for_graph(const Edges& edges, const std::unordered_map<int, int>& potential_edges) {
+    if (potential_edges.size() == 0){
+        return true;
+    }
+    int s1, s2;
+    for (const auto& [k1, val_1] : potential_edges){
+    for (const auto& [k2, val_2] : potential_edges){
+        s1 = k1; s2 = k2;
+        if (s1 == s2) break;
+        _sort_pair(s1, s2);
+        if (_not_in_edges(s1, s2, edges)) {
+            return true;
+        }
+    }
+    }
+    return false;
+}
+
+
+Edges _try_create_edges(int d, int n){
+    Edges edges;
+    std::vector<int> stubs;
+    std::unordered_map<int, int> potential_edges;
+    int s1, s2, smax;
+
+    for (int repeat = 0; repeat < d; repeat++){
+        for (int i = 0; i < n; i++){
+            stubs.push_back(i);
+        }
+    }
+
+    int repeat_num = 0; 
+    while (stubs.size() > 0){
+        repeat_num++;
+        potential_edges.clear();
+        shuffle(stubs.begin(), stubs.end(), g);
+
+        smax = stubs.size();
+        for (int count = 0; count < smax; count++){
+            s1 = stubs[count++];
+            s2 = stubs[count];
+
+            _sort_pair(s1, s2);
+
+            if ((s1 != s2) and _not_in_edges(s1, s2, edges)){
+                edges.emplace(Index2D{s1, s2});
+            } else {
+                potential_edges[s1]++;  //std::map will initialise value of 0
+                potential_edges[s2]++;
+            }
+        }
+
+        if (not _is_suitable_for_graph(edges, potential_edges)){
+            return Edges {};
+        }
+
+        stubs.clear();
+        for (const auto& [node, node_count] : potential_edges){
+            for (int j = 0; j < node_count; j++){
+                stubs.push_back(node);  // push back twice to to create pairs
+            }
+        }
+    }
+    return edges;
+}
+
+
+bool _check_existence(int i, Nodes &collection){
     for (auto element : collection){
         if (i == element){
             return true;
@@ -65,16 +156,17 @@ bool check_existence(int i, Nodes &collection){
     return false;
 }
 
+
 void collect_vnm_edges(int i, int d, int n, Edges& edges){
     Nodes neighbours {};
     int i2;
     for (int j = 0; j < d; j++){
         i2 = std::rand() % n;
-        bool is_duplicate = check_existence(i2, neighbours);
+        bool is_duplicate = _check_existence(i2, neighbours);
         if (is_duplicate){
             j--;
         } else {
-            edges.push_back(std::array<int, 2> {i, i2});
+            edges.emplace(Index2D{i, i2});
             neighbours.push_back(i2);
         }
     }
@@ -86,11 +178,11 @@ void collect_vnm_edges_force_diag(int i1, int d, int n, Edges& edges){
     bool self_included = false;
     for (int j = 0; j < d - 1; j++){
         int i2 = std::rand() % n;
-        bool is_duplicate = check_existence(i2, neighbours);
+        bool is_duplicate = _check_existence(i2, neighbours);
         if (is_duplicate){
             j--;
         } else {
-            edges.push_back(std::array<int, 2> {i1, i2});
+            edges.emplace(Index2D {i1, i2});
             neighbours.push_back(i2);
             if (i2 == i1){ self_included = true; }
         }
@@ -105,9 +197,9 @@ void collect_vnm_edges_force_diag(int i1, int d, int n, Edges& edges){
                 if (i2 == neighbour) {should_continue = true;}
             }
         }
-        edges.push_back(std::array<int, 2> {i1, i2});
+        edges.emplace(Index2D {i1, i2});
     } else {
-        edges.push_back(std::array<int, 2> {i1, i1});
+        edges.emplace(Index2D {i1, i1});
     }
 }
 
@@ -116,15 +208,37 @@ void collect_vnm_edges_no_diag(int i1, int d, int n, Edges& edges){
     Nodes neighbours {};
     for (int j = 0; j < d; j++){
         int i2 = std::rand() % n;
-        bool is_duplicate = check_existence(i2, neighbours);
+        bool is_duplicate = _check_existence(i2, neighbours);
         is_duplicate = is_duplicate or (i1 == i2);
         if (is_duplicate){
             j--;
         } else {
-            edges.push_back(std::array<int, 2> {i1, i2});
+            edges.emplace(Index2D {i1, i2});
             neighbours.push_back(i2);
         }
     }
+}
+
+
+Graph random_regular_graph(int d, int n){
+    if (d == 0){
+        return Graph{n};
+    }
+    if (n * d % 2 != 0){
+        throw std::invalid_argument("n * d shuold be even");
+    }
+    if ((d < 0) or (d >= n)) {
+        throw std::invalid_argument("the 0 <= d < n inequality must be satisfied");
+    }
+    Edges edges = _try_create_edges(d, n);
+    while (edges.size() == 0){
+        edges = _try_create_edges(d, n);
+    }
+    Nodes nodes;
+    for (int i = 0; i < n; i++){
+        nodes.push_back(i);
+    }
+    return Graph{nodes, edges, false};
 }
 
 
@@ -145,12 +259,12 @@ Graph random_vnm_graph(int d, int n){
             for (int i = 0; i < n; i++){
                 collect_vnm_edges(i, d, n, edges);
             }
-            return Graph(nodes, edges);
+            return Graph(nodes, edges, true);
         } else {
             for (int i = 0; i < n; i++){
                 collect_vnm_edges(i, n - d, n, edges);
             }
-            Graph g_inv {nodes, edges};
+            Graph g_inv {nodes, edges, true};
             ConnMat adj_mat_inv = g_inv.as_matrix();
             return Graph (1 - adj_mat_inv); 
         }
@@ -176,12 +290,12 @@ Graph random_vnm_graph_force_self(int d, int n){
             for (int i = 0; i < n; i++){
                 collect_vnm_edges_force_diag(i, d, n, edges);
             }
-            return Graph{nodes, edges};
+            return Graph{nodes, edges, true};
         } else {
             for (int i = 0; i < n; i++){
                 collect_vnm_edges_no_diag(i, n - d, n, edges);
             }
-            Graph g_inv {nodes, edges};
+            Graph g_inv {nodes, edges, true};
             ConnMat adj_mat_inv = g_inv.as_matrix();
             return Graph (1 - adj_mat_inv); 
         }
@@ -217,7 +331,7 @@ void Network3D::evolve(int steps, int dynamic){
             this->move(true);
         }
     } else {
-        throw(
+        throw std::invalid_argument(
             "invalid dynamic type, choose between [0]: quenched or [1]: anneled"
         );
     }
