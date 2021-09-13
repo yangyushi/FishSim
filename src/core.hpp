@@ -10,6 +10,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
