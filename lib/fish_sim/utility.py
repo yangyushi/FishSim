@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+import networkx as nx
 from itertools import product
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -339,3 +340,69 @@ class DumpModel(Observer):
         pickle.dump(model, self.f)
         self.f.close()
         self.not_dumped = False
+
+
+def plot_graph(matrix, ax=None, scale=1):
+    """
+    Plot a graph from its adjacency matrix
+    """
+    show = False
+    if not ax:
+        show = True
+        ax = plt.gca()
+
+    assert matrix.ndim == 2, "2D square matrix is needed"
+    assert matrix.shape[1] == matrix.shape[0], "2D square matrix is needed"
+    n = matrix.shape[0]
+    ax_lim =  1.5 * scale
+    ax.set_xlim(-ax_lim, ax_lim)
+    ax.set_ylim(-ax_lim, ax_lim)
+    graph = nx.from_numpy_matrix(matrix, create_using=nx.DiGraph())
+    pos = nx.circular_layout(graph, scale=scale)
+    nx.draw(
+        graph, pos=pos,
+        labels={key: f"{key+1}" for key in range(n)},
+        node_size=480,
+        ax=ax, edge_color='k', node_color='w',
+        with_labels=True,
+    )
+    if show:
+        plt.tight_layout()
+        plt.show()
+
+
+def plot_adjacency_matrix(matrix, ax=None, title=""):
+    """
+    Plot the adjacency in nice format
+    """
+    show = False
+    if not ax:
+        show = True
+        ax = plt.gca()
+
+    assert matrix.ndim == 2, "2D square matrix is needed"
+    assert matrix.shape[1] == matrix.shape[0], "2D square matrix is needed"
+    n = matrix.shape[0]
+
+    ax.imshow(matrix, cmap='gray_r', vmin=0, vmax=None)
+
+    ax.tick_params(axis="x", direction="in", length=0)
+    ax.tick_params(axis="y", direction="in", length=0)
+    ax.set_xticks(np.arange(n))
+    ax.set_yticks(np.arange(n))
+    ax.set_xticks(np.arange(n) - 0.5, minor=True)
+    ax.set_yticks(np.arange(n) - 0.5, minor=True)
+    ax.grid(which="minor", color='k', lw=1)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    ax.set_xticklabels(np.arange(1, n+1))
+    ax.set_yticklabels(np.arange(1, n+1))
+    ax.set_title(title)
+
+    if show:
+        plt.tight_layout()
+        plt.show()
+
+
+if __name__ == "__main__":
+    plot_adjacency_matrix(np.random.random((10, 10)))
