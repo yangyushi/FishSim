@@ -238,6 +238,7 @@ Graph random_regular_graph(int d, int n){
     if ((d < 0) or (d >= n)) {
         throw std::invalid_argument("the 0 <= d < n inequality must be satisfied");
     }
+
     Nodes nodes;
     for (int i = 0; i < n; i++){
         nodes.push_back(i);
@@ -246,9 +247,12 @@ Graph random_regular_graph(int d, int n){
         Edges edges = get_regular_edges(d, n);
         return Graph{nodes, edges, false};
     } else {
-        Edges edges_inv = get_regular_edges(n-d, n);
-        Graph g_inv{nodes, edges_inv, true};
+        Edges edges_inv = get_regular_edges(n - d - 1, n);
+        Graph g_inv{nodes, edges_inv, false};
         ConnMat adj_mat_inv = g_inv.as_matrix();
+        for (int i=0; i < n; i++){
+            adj_mat_inv(i, i) = 1;
+        }
         return Graph{1 - adj_mat_inv};
     }
 }
@@ -271,7 +275,7 @@ Graph random_vnm_graph(int d, int n){
             for (int i = 0; i < n; i++){
                 collect_vnm_edges(i, d, n, edges);
             }
-            return Graph(nodes, edges, true);
+            return Graph{nodes, edges, true};
         } else {
             for (int i = 0; i < n; i++){
                 collect_vnm_edges(i, n - d, n, edges);
