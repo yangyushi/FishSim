@@ -3,12 +3,17 @@
 
 int main(){
     int n = 50;
-    int k = 10;
+    int k = 2;
     int total_steps = 100;
 
-    Network3D system{n, k, 0.3};
+    Graph g; 
+    g = random_regular_graph(k, n);
+    g = random_vnm_graph(k, n);
+    g = random_vnm_graph_force_self(k, n);
+    std::cout << "graph functions okay" << std::endl;
 
-    std::cout << "system created" << std::endl;
+    Network3D system{n, k, 0.3};
+    std::cout << "system creation okay" << std::endl;
 
     for (int step=0; step < total_steps; step++){
         system.move(false);
