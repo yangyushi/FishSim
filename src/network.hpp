@@ -50,13 +50,16 @@ class Network3D : public AVS3D{
         Conn connections_;
     
     private:
-        void update_graph();
+        virtual void update_graph();
 
     public:
         Network3D(int n, int k, double eta);
+        virtual ~Network3D(){};
         void random_align();
         void move(bool new_graph);
         void evolve(int steps, int dynamic);
+        ConnMat get_adj_mat();
+        void set_adj_mat(ConnMat adj_mat);
 };
 
 

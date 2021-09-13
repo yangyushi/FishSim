@@ -1075,6 +1075,10 @@ PYBIND11_MODULE(cmodel, m){
             &Network3D::get_velocities, &Network3D::load_velocities,
             py::return_value_policy::copy
         )
+        .def_property("adj_mat",
+            &Network3D::get_adj_mat, &Network3D::set_adj_mat,
+            py::return_value_policy::copy
+        )
         .def_readonly("dim", &Network3D::dim_);
 
     py::class_<Network3DRG>(m, "Network3DRG")
@@ -1117,6 +1121,10 @@ PYBIND11_MODULE(cmodel, m){
         )
         .def_property("velocities",
             &Network3DRG::get_velocities, &Network3DRG::load_velocities,
+            py::return_value_policy::copy
+        )
+        .def_property("adj_mat",
+            &Network3DRG::get_adj_mat, &Network3DRG::set_adj_mat,
             py::return_value_policy::copy
         )
         .def_readonly("dim", &Network3DRG::dim_);

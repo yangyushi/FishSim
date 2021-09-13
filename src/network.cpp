@@ -342,9 +342,23 @@ void Network3D::evolve(int steps, int dynamic){
 }
 
 
+ConnMat Network3D::get_adj_mat(){
+    return graph_.as_matrix();
+}
+
+
+void Network3D::set_adj_mat(ConnMat adj_mat){
+    Graph new_graph{adj_mat};
+    graph_ = new_graph;
+}
+
+
 Network3DRG::Network3DRG(int n, int k, double eta) : Network3D(n, k, eta){}
 
 void Network3DRG::update_graph(){
-    graph_ = random_regular_graph(k_, n_);
+    graph_ = random_regular_graph(k_ - 1, n_);
+    for (auto node : graph_.nodes_){
+        graph_.edges_.emplace(Index2D{node, node});
+    }
     connections_ = graph_.as_connections();
 }
