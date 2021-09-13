@@ -220,6 +220,14 @@ void collect_vnm_edges_no_diag(int i1, int d, int n, Edges& edges){
 }
 
 
+Edges get_regular_edges(int d, int n){
+    Edges edges = _try_create_edges(d, n);
+    while (edges.size() == 0){
+        edges = _try_create_edges(d, n);
+    }
+    return edges;
+}
+
 Graph random_regular_graph(int d, int n){
     if (d == 0){
         return Graph{n};
@@ -230,15 +238,19 @@ Graph random_regular_graph(int d, int n){
     if ((d < 0) or (d >= n)) {
         throw std::invalid_argument("the 0 <= d < n inequality must be satisfied");
     }
-    Edges edges = _try_create_edges(d, n);
-    while (edges.size() == 0){
-        edges = _try_create_edges(d, n);
-    }
     Nodes nodes;
     for (int i = 0; i < n; i++){
         nodes.push_back(i);
     }
-    return Graph{nodes, edges, false};
+    if (d < n / 2){
+        Edges edges = get_regular_edges(d, n);
+        return Graph{nodes, edges, false};
+    } else {
+        Edges edges_inv = get_regular_edges(n-d, n);
+        Graph g_inv{nodes, edges_inv, true};
+        ConnMat adj_mat_inv = g_inv.as_matrix();
+        return Graph{1 - adj_mat_inv};
+    }
 }
 
 
