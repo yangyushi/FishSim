@@ -378,3 +378,43 @@ void Network3DRG::update_graph(){
     }
     connections_ = graph_.as_connections();
 }
+
+
+Voter::Voter(int n, int k, double eta)
+    : ABS{n, eta}, k_(k){
+        this->update_graph();
+}
+
+void Voter::update_graph(){
+    graph_ = random_vnm_graph(k_, n_);
+    connections_ = graph_.as_connections();
+}
+
+void Voter::set_adj_mat(ConnMat matrix){
+    Graph new_graph{matrix};
+    graph_ = new_graph;
+}
+
+void Voter::move(bool new_graph){
+    if (new_graph){
+        this->update_graph();
+    }
+    voter_align(spins_, states_, connections_);
+    this->add_noise();
+}
+
+void Voter::evolve(int steps, int dynamic){
+    if (dynamic == 0){
+        for (int i = 0; i < steps; i++){
+            this->move(false);
+        }
+    } else if (dynamic == 1){
+        for (int i = 0; i < steps; i++){
+            this->move(true);
+        }
+    } else {
+        throw std::invalid_argument(
+            "invalid dynamic type, choose between [0]: quenched or [1]: anneled"
+        );
+    }
+}
