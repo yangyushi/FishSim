@@ -17,7 +17,7 @@
 #include <Eigen/LU>
 
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
-using PropertyInt = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
+using Spins = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 
 using Conn = std::vector< std::vector <int> >;
 using DistMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>; // (n, n)
@@ -205,17 +205,20 @@ void vicsek_align_vn(T& velocities, const Conn& connections, double noise){
  */
 template<class T>
 void vicsek_align(T& velocities, const Conn& connections){
-    int dim = velocities.rows();
-    int n = velocities.cols();
+    size_t dim = velocities.rows();
+    size_t n = velocities.cols();
     T new_velocities{dim, n};
     new_velocities.setZero();
-    for (int i = 0; i < n; i++){
+    for (size_t i = 0; i < n; i++){
         for (auto j : connections[i]){
             new_velocities.col(i) += velocities.col(j);
         }
     }
     velocities = new_velocities;
 }
+
+
+void voter_align(Spins& spins, Property& states, const Conn& connections);
 
 
 /*
@@ -367,5 +370,21 @@ class AVS3D{  // [A]ligning [V]ectors with [S]carlar noise in [3D]
         double noise_;
 };
 
+
+class ABS{  // [A]ligning [B]inary [S]pins
+    public:
+        int n_;
+        int dim_ = 1;
+        Spins spins_;  // takse value of -1 or +1
+        ABS(int n, double noise);
+        void add_noise();
+        inline Spins get_spins(){ return spins_; };
+        inline void load_spins(Spins to_load) { spins_ << to_load; };
+        inline double get_magnetisation() { return static_cast<float>(spins_.sum()) / n_; };
+
+    protected:
+        double noise_;
+        Property states_;  // helper array
+};
 
 #endif

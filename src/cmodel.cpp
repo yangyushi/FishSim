@@ -1128,4 +1128,49 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         )
         .def_readonly("dim", &Network3DRG::dim_);
+
+    py::class_<Voter>(m, "Voter")
+        .def(
+            py::init<int, int, double>(),
+            pybind11::arg("n"), pybind11::arg("k"), pybind11::arg("eta")
+        )
+        .def(
+            "move", &Voter::move,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+
+            Args:
+                new_graph (bool): if true, a new regular graph will be
+                    generated.
+            )---",
+            py::arg("new_graph")=true
+        )
+        .def(
+            "evolve", &Voter::evolve,
+            R"---(
+            Advance the dynamic, move multiple Monte-Carlo steps
+
+            Args:
+                steps (int): the number of Monte-Carlo steps to move.\
+                dynamic (int): 0 = quenched dynamic, no graph update.\
+                    1 = anneleda dynamic, graph update every step.
+
+            )---",
+            py::arg("steps"), py::arg("rebuild")=true
+        )
+        .def(
+            "get_magnetisation", &Voter::get_magnetisation,
+            "Calculate the get_magnetisation per spin of current state of the system",
+            py::return_value_policy::copy
+        )
+        .def_property("spins",
+            &Voter::get_spins, &Voter::load_spins,
+            py::return_value_policy::copy
+        )
+        .def_property("adj_mat",
+            &Voter::get_adj_mat, &Voter::set_adj_mat,
+            py::return_value_policy::copy
+        )
+        .def_readonly("dim", &Voter::dim_);
+
 }

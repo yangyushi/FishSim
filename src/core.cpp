@@ -196,10 +196,33 @@ RotMat get_rotation_matrix(double x, double y, double z){
 }
 
 
+void voter_align(Spins& spins, Property& states, const Conn& connections){
+    size_t n = spins.cols();
+    states.setZero();
+    for (size_t i = 0; i < n; i++){
+        for (auto j : connections[i]){
+            states(0, i) += spins(0, j);
+        }
+    }
+    for (size_t i = 0; i < n; i++){
+        if (states(0, i) <= 0){
+            spins(0, i) = -1;
+        } else {
+            spins(0, i) = 1;
+        }
+    }
+}
+
 
 AVS2D::AVS2D(int n, double noise, double speed)
     : n_(n), speed_(speed), velocities_(dim_, n), noise_(noise) {
     // generate random vector on a unit circle
+
+    if (noise > 1){
+        throw std::invalid_argument("noise should in range (0, 1)");
+    } else if (noise < 0){
+        throw std::invalid_argument("noise should in range (0, 1)");
+    }
     Property vr{n_}, vphi{n_};
     vr.setConstant(speed_);
     vphi.setRandom();
@@ -226,6 +249,12 @@ void AVS2D::add_noise(){
 
 AVS3D::AVS3D(int n, double noise, double speed)
     : n_(n), speed_(speed), velocities_(dim_, n), noise_(noise){
+
+    if (noise > 1){
+        throw std::invalid_argument("noise should in range (0, 1)");
+    } else if (noise < 0){
+        throw std::invalid_argument("noise should in range (0, 1)");
+    }
     Property vz{n}, vphi{n}, vrxy{n};
     vz.setRandom(); // vz ~ U(-1, 1)
     vrxy = sqrt(1 - vz.pow(2));
@@ -264,5 +293,40 @@ void AVS3D::add_noise(){
             velocities_(0, i), velocities_(1, i), velocities_(2, i)
         );
         velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
+    }
+}
+
+
+ABS::ABS(int n, double noise)
+    : n_(n), spins_{1, n}, noise_(noise), states_{1, n}
+{
+    if (noise > 1){
+        throw std::invalid_argument("noise should in range (0, 1)");
+    } else if (noise < 0){
+        throw std::invalid_argument("noise should in range (0, 1)");
+    }
+
+    states_.setRandom();  // ~U(-1, 1)
+    size_t i = 0;
+    for (const auto& num : states_) {
+        if (num > 0) {
+            spins_(0, i) = 1;
+        } else {
+            spins_(0, i) = -1;
+        }
+        i++;
+    }
+}
+
+
+void ABS::add_noise(){
+    states_.setRandom();  // ~U(0, 1)
+    size_t i = 0;
+    double threshold = noise_ - 1;
+    for (const auto& num : states_) {
+        if (num < threshold) {
+            spins_(0, i) = -spins_(0, i);
+        }
+        i++;
     }
 }
