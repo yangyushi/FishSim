@@ -380,7 +380,9 @@ class ABS{  // [A]ligning [B]inary [S]pins
         void add_noise();
         inline Spins get_spins(){ return spins_; };
         inline void load_spins(Spins to_load) { spins_ << to_load; };
-        inline double get_magnetisation() { return static_cast<float>(spins_.sum()) / n_; };
+        inline double get_polarisation() {
+            return abs(static_cast<float>(spins_.sum()) / n_);
+        };
 
     protected:
         double noise_;

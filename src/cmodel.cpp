@@ -1159,8 +1159,8 @@ PYBIND11_MODULE(cmodel, m){
             py::arg("steps"), py::arg("rebuild")=true
         )
         .def(
-            "get_magnetisation", &Voter::get_magnetisation,
-            "Calculate the get_magnetisation per spin of current state of the system",
+            "get_polarisation", &Voter::get_polarisation,
+            "Calculate the get_polarisation per spin of current state of the system",
             py::return_value_policy::copy
         )
         .def_property("spins",
