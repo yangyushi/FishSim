@@ -55,7 +55,6 @@ class Network3D : public AVS3D{
     public:
         Network3D(int n, int k, double eta);
         virtual ~Network3D(){};
-        void random_align();
         void move(bool new_graph);
         void evolve(int steps, int dynamic);
         ConnMat get_adj_mat();
@@ -69,6 +68,24 @@ class Network3DRG : public Network3D {
 
     private:
         void update_graph();
+};
+
+
+class Voter : public ABS {
+    protected:
+        int k_;
+        Graph graph_;
+        Conn connections_;
+
+    private:
+        void update_graph();
+
+    public:
+        Voter(int n, int k, double eta);
+        void move(bool new_graph);
+        void evolve(int steps, int dynamic);
+        inline ConnMat get_adj_mat(){ return graph_.as_matrix(); };
+        void set_adj_mat(ConnMat);
 };
 
 #endif
