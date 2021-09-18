@@ -55,7 +55,7 @@ int main(){
 
     for (int step=0; step < steps; step++){
         s3.move(true);
-        std::cout << "Magnetisation: " << s3.get_magnetisation() << std::endl;
+        std::cout << "Polarisation: " << s3.get_polarisation() << std::endl;
     }
     std::cout << "Voter anneled movement okay" << std::endl;
 
