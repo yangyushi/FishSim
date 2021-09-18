@@ -22,7 +22,7 @@ class Vicsek3D : public AVS3D{
             }
         };
         // for interact with python
-        Coord3D& get_positions() { return positions_; };
+        inline Coord3D& get_positions() { return positions_; };
         void load_positions(Coord3D);
 };
 

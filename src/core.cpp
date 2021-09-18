@@ -195,6 +195,76 @@ RotMat get_rotation_matrix(double x, double y, double z){
     return R;
 }
 
+RotMat get_rotation_matrix(Vec3D v1, Vec3D v2){
+    RotMat F, G, R;
+    R << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+    if ((v1 - v2).norm() <= 100 * std::numeric_limits<double>::epsilon()){
+        return R;
+    }
+    double n1 = (double) v1.norm(),
+           n2 = (double) v2.norm();
+    double tmp = v1.transpose() * v2;
+    double t12 = acos(tmp / (n1 * n2));
+    Vec3D u, v, w;
+    if (cos(t12) > 0){
+        u << v1 / n1 * n2 * cos(t12);
+        v << v2 - u;
+        u = u / u.norm();
+        v = v / v.norm();
+    } else {
+        u << v1 / n1 * n2 * -cos(t12);
+        v << v2 + u;
+        u = u / u.norm();
+        v = v / v.norm();
+    }
+    w << u.cross(v);
+    G << cos(t12), -sin(t12), 0,
+         sin(t12), cos(t12), 0,
+         0, 0, 1;
+    F << u.transpose(), v.transpose(), w.transpose();
+    R = F.inverse() * G * F;
+
+    return R;
+}
+
+RotMat get_rotation_matrix(Vec3D v1, Vec3D v2, double theta){
+    RotMat F, G, R;
+    R << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+    if (abs((v1 - v2).norm()) <= 100 * std::numeric_limits<double>::epsilon()){
+        return R;
+    }
+    double n1 = v1.norm(),
+           n2 = v2.norm();
+    double tmp = v1.transpose() * v2;
+    double t12 = acos(tmp / (n1 * n2));
+    Vec3D u, v, w;
+    if (cos(t12) > 0){
+        u << v1 / n1 * n2 * cos(t12);
+        v << v2 - u;
+        u = u / u.norm();
+        v = v / v.norm();
+    } else {
+        u << v1 / n1 * n2 * -cos(t12);
+        v << v2 + u;
+        u = u / u.norm();
+        v = v / v.norm();
+    }
+    w = u.cross(v);
+    if (abs(t12) > theta){
+        if (t12 < 0){
+            t12 = -theta;
+        } else {
+            t12 = theta;
+        }
+    }
+    G << cos(t12), -sin(t12), 0,
+         sin(t12), cos(t12), 0,
+         0, 0, 1;
+    F << u.transpose(), v.transpose(), w.transpose();
+    R = F.inverse() * (G * F);
+    return R;
+}
+
 
 void voter_align(Spins& spins, Property& states, const Conn& connections){
     size_t n = spins.cols();

@@ -62,11 +62,28 @@ Coord2D phi_to_xy(Property& phi);
 Coord2D phi_to_xy(Property& phi, double spd);
 
 
-/*
- * get the rotation matrix to rotate vector (0, 0, 1) to (x, y, z)
- */
+// get the rotation matrix to rotate vector (0, 0, 1) to (x, y, z)
 RotMat get_rotation_matrix(double x, double y, double z);
 
+// get the rotation matrix to rotate vector v1 to v2
+RotMat get_rotation_matrix(Vec3D v1, Vec3D v2);
+
+/* 
+ * get the rotation matrix to rotate vector v1 to v2, with the maximum rotation
+ * angle of theta.
+ * If the angle between v1 and v2 is greater than theta, then only rotate by
+ * the angle of theta, in the correct direction
+*/
+RotMat get_rotation_matrix(Vec3D v1, Vec3D v2, double theta);
+
+
+template <typename T>
+double get_angle(T v1, T v2){
+    double tmp = v1.transpose() * v2;
+    tmp = tmp / v1.norm();
+    tmp = tmp / v2.norm();
+    return acos(tmp);
+}
 
 template <typename T>
 std::vector<int> argsort(const std::vector<T> &v) {

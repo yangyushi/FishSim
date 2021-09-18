@@ -35,6 +35,15 @@ class VerletList{
         void get_cmat(const T& positoins, ConnMat& conn_mat);
         void get_cmat_slow(const T& positoins, ConnMat& conn_mat);
         Conn get_conn(const T& positions);
+        /*
+         * find many different connections:
+         *     {dij < r1}, {r1 <= dij < r2} , ... , {rc_ <= dij}
+         */
+        std::vector<Conn> get_conn(const T& positions, std::vector<double> r_vals);
+
+        Conn get_neighbour_conn(const T& positions);
+        std::vector<Conn> get_neighbour_conn(const T& positions, std::vector<double> r_vals);
+        std::vector<Conn> get_neighbour_conn_slow(const T& positions, std::vector<double> r_vals);
         Conn get_conn_slow(const T& positions);
 };
 
@@ -139,6 +148,145 @@ Conn VerletList<T>::get_conn(const T& positions){
     }
     return connections;
 }
+
+template<class T>
+Conn VerletList<T>::get_neighbour_conn(const T& positions){
+    Conn connections = get_blank_connections();
+    #pragma omp parallel for
+    for (int i = 0; i < point_size_ - 1; i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i + 1]; j++){
+            idx_j = nlist_[j];
+            if (idx_j == i){
+                continue;
+            }
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
+            if (dist2 < rc2_){
+                connections[i].push_back(idx_j);
+            }
+        }
+    }
+    return connections;
+}
+
+
+
+/*
+ * get the indices of neighbours in different regions 
+ *
+ *  Args:
+ *      r_bins: [r1, r2, ..., rk], where r1 < r2 < ... rk < rc_
+ *
+ *  Return:
+ *     [c1, c2, ..., cn]  where ci is the connection in region i.
+ *     and ci counts the region where r(i) < dij <= r(i+1)
+ */
+template<class T>
+std::vector<Conn> VerletList<T>::get_conn(
+        const T& positions, std::vector<double> r_bins
+    ){
+    size_t conn_num = r_bins.size() - 1;
+    std::vector<Conn> conn_list;
+    std::vector<double> r2_bins;
+    for (int i = 0; i < conn_num; i++){
+        conn_list.push_back(get_blank_connections());
+        r2_bins.push_back(r_bins[i] * r_bins[i]);
+    }
+    r2_bins.push_back(r_bins[conn_num] * r_bins[conn_num]);
+    #pragma omp parallel for
+    for (int i = 0; i < point_size_ - 1; i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i + 1]; j++){
+            idx_j = nlist_[j];
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
+            for (int k=0; k < conn_num; k++){
+                if ((dist2 > r2_bins[k]) and (dist2 <= r2_bins[k+1])){
+                    conn_list[k][i].push_back(idx_j);
+                    break;
+                }
+            }
+        }
+    }
+    return conn_list;
+}
+
+
+/*
+ * not including self-loop
+ */
+template<class T>
+std::vector<Conn> VerletList<T>::get_neighbour_conn(
+        const T& positions, std::vector<double> r_bins
+    ){
+    size_t conn_num = r_bins.size() - 1;
+    std::vector<Conn> conn_list;
+    std::vector<double> r2_bins;
+    for (int i = 0; i < conn_num; i++){
+        conn_list.push_back(get_blank_connections());
+        r2_bins.push_back(r_bins[i] * r_bins[i]);
+    }
+    r2_bins.push_back(r_bins[conn_num] * r_bins[conn_num]);
+
+    //#pragma omp parallel for
+    for (int i = 0; i < point_size_ - 1; i++){
+        int p0 = point_[i];
+        int idx_j = 0;
+        double dist2 = 0;
+        for (int j = p0; j < point_[i + 1]; j++){
+            idx_j = nlist_[j];
+            if (idx_j == i){
+                continue;
+            }
+            dist2 = (positions.col(i) - positions.col(idx_j)).array().pow(2).sum();
+            std::cout << dist2 << " -- " << r2_bins[1] << std::endl;
+            for (int k=0; k < conn_num; k++){ 
+                if ((dist2 > r2_bins[k]) and (dist2 <= r2_bins[k+1])){
+                    conn_list[k][i].push_back(idx_j);
+                    break;
+                }
+            }
+        }
+    }
+    return conn_list;
+}
+
+
+template<class T>
+std::vector<Conn> VerletList<T>::get_neighbour_conn_slow(
+        const T& positions, std::vector<double> r_bins
+    ){
+    size_t conn_num = r_bins.size() - 1;
+    std::vector<Conn> conn_list;
+    std::vector<double> r2_bins;
+    for (int i = 0; i < conn_num; i++){
+        conn_list.push_back(get_blank_connections());
+        r2_bins.push_back(r_bins[i] * r_bins[i]);
+    }
+    r2_bins.push_back(r_bins[conn_num] * r_bins[conn_num]);
+
+    //#pragma omp parallel for
+    for (int i = 0; i < size_; i++){
+        double dist2 = 0;
+        for (int j = 0; j < size_; j++){
+            if (j == i){
+                continue;
+            }
+            dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
+            for (int k=0; k < conn_num; k++){ 
+                if ((dist2 > r2_bins[k]) and (dist2 <= r2_bins[k+1])){
+                    conn_list[k][i].push_back(j);
+                    break;
+                }
+            }
+        }
+    }
+    return conn_list;
+}
+
 
 
 template<class T>
