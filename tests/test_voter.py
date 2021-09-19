@@ -1,8 +1,10 @@
+import pytest
 import fish_sim as fs
 import numpy as np
 import matplotlib.pyplot as plt
 
 
+@pytest.mark.parametrize("n", [10, 50])
 def test_voter(n, steps=100):
     k = 3
     eta_vals = np.linspace(0, 1, 10)
@@ -13,7 +15,7 @@ def test_voter(n, steps=100):
         mag_vals = np.empty(steps)
         for j in range(steps):
             system.move(True)
-            mag_vals[j] = np.abs(system.get_magnetisation())
+            mag_vals[j] = np.abs(system.get_polarisation())
         magnitisation[i] = mag_vals.mean()
     return eta_vals, magnitisation
 

@@ -6,17 +6,17 @@ import fish_sim as fs
 
 def test_network():
     n = 50
-    k = 40
+    k = 5
     eta_vals = np.linspace(0, 1, 20)
 
     pol_vals = []
     for eta in eta_vals:
         system = fs.cmodel.Network3D(n, k, eta)
-        for _ in range(1000):
+        for _ in range(100):
             system.move()
 
         pol = []
-        for _ in range(1000):
+        for _ in range(100):
             system.move()
             pol.append(system.get_polarisation())
 
