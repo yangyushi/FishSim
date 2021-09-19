@@ -1,9 +1,11 @@
+#include "core.hpp"
 #include "vicsek.hpp"
 #include "network.hpp"
 #include "neighbour_list.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
+#include <pybind11/stl.h>
 #include <string>
 
 #define STRINGIFY(x) #x
@@ -753,9 +755,85 @@ ConnMat get_random_regular_adjecancy_matrix(int d, int n, bool include_self){
 }
 
 
+Index2D _unravel_index_2d(int index, Index2D shape){
+    return unravel_index(index, shape);
+}
+
+Index3D _unravel_index_3d(int index, Index3D shape){
+    return unravel_index(index, shape);
+}
+
+
+RotMat _get_rotation_matrix_from_001(double x, double y, double z){
+    return get_rotation_matrix(x, y, z);
+}
+
+RotMat _get_rotation_matrix(Vec3D v1, Vec3D v2){
+    return get_rotation_matrix(v1, v2);
+}
+
+RotMat _get_rotation_matrix_limited(Vec3D v1, Vec3D v2, double theta){
+    return get_rotation_matrix(v1, v2, theta);
+}
+
+std::vector<int> _argsort(const std::vector<double> &values){
+    return argsort(values);
+}
+
+
+Indices3D _product_3d(Indices a1, Indices& a2, Indices& a3){
+    return product_3d(a1, a2, a3);
+}
+
+Indices2D _product_2d(Indices a1, Indices& a2){
+    return product_2d(a1, a2);
+}
+
 
 PYBIND11_MODULE(cmodel, m){
     m.doc() = "Simulating different models to understand the collective behaviours";
+
+    m.def(
+        "_argsort", &_argsort, "c++ version of np.argsort", py::arg("array")
+    );
+
+    m.def(
+        "_product_2d", &_product_2d, "2D Cartesian product of two arrays"
+    );
+
+    m.def(
+        "_product_3d", &_product_3d, "3D Cartesian product of two arrays"
+    );
+
+    m.def(
+        "_unravel_index_2d", &_unravel_index_2d,
+        "c++ version of np.unravel_index for 2D array",
+        py::arg("index"), py::arg("shape")
+    );
+
+    m.def(
+        "_unravel_index_3d", &_unravel_index_3d,
+        "c++ version of np.unravel_index for 3D array",
+        py::arg("index"), py::arg("shape")
+    );
+
+    m.def(
+        "_get_rotation_matrix_from_001", &_get_rotation_matrix_from_001,
+        "get the rotation matrix from 001 to x, y, z",
+        py::arg("x"), py::arg("y"), py::arg("z")
+    );
+
+    m.def(
+        "_get_rotation_matrix", &_get_rotation_matrix,
+        "get the rotation matrix from v1 to v2",
+        py::arg("v1"), py::arg("v2")
+    );
+
+    m.def(
+        "_get_rotation_matrix_limited", &_get_rotation_matrix_limited,
+        "get the rotation matrix from v1 to v2, with the maximum rotation value of theta",
+        py::arg("v1"), py::arg("v2"), py::arg("theta")
+    );
 
     m.def(
         "vicsek_3d_pbc", &vicsek_3d_pbc, docstring_vicsek_3d_pbc,
@@ -1172,5 +1250,4 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         )
         .def_readonly("dim", &Voter::dim_);
-
 }
