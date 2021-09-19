@@ -2,8 +2,8 @@
 #include <chrono>
 
 int main(){
-    int n = 100;
-    int total_steps = 500;
+    int n = 50;
+    int total_steps = 1000;
     int jump = 1;
     float theta = 3.141592653 / 180 * 40;
     float perception = 270.0 / 360.0 * 3.1415;
