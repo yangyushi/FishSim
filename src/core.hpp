@@ -194,44 +194,46 @@ void normalise(T& xyz, double norm_value){
 }
 
 /*
- * calculate the vicsek alignment of velocities with [v]ectorial [n]oise
+ * calculate the vicsek alignment of orientations with [v]ectorial [n]oise
  *     it should work with any dimension
  * See ginellEPJ2016 for equations
  */
 template<class T>
-void vicsek_align_vn(T& velocities, const Conn& connections, double noise){
-    int dim = velocities.rows();
-    int n = velocities.cols();
-    T new_velocities{dim, n};
+void vicsek_align_vn(T& orientations, const Conn& connections, double noise){
+    int dim = orientations.rows();
+    int n = orientations.cols();
+    T new_orientations{dim, n};
     T noise_nd{dim, n};
-    new_velocities.setZero();
+    new_orientations.setZero();
     noise_nd.setRandom();
     normalise(noise_nd, noise);
     for (int i = 0; i < n; i++){
         for (auto j : connections[i]){
-            new_velocities.col(i) += velocities.col(j);
+            new_orientations.col(i) += orientations.col(j);
         }
-        new_velocities.col(i) += noise_nd.col(i) * connections[i].size();
+        new_orientations.col(i) += noise_nd.col(i) * connections[i].size();
     }
-    velocities = new_velocities;
+    orientations = new_orientations;
+    normalise(orientations);
 }
 
 
 /*
- * calculate the vicsek alignment of velocities
+ * calculate the vicsek alignment of orientations
  */
 template<class T>
-void vicsek_align(T& velocities, const Conn& connections){
-    size_t dim = velocities.rows();
-    size_t n = velocities.cols();
-    T new_velocities{dim, n};
-    new_velocities.setZero();
+void vicsek_align(T& orientations, const Conn& connections){
+    size_t dim = orientations.rows();
+    size_t n = orientations.cols();
+    T new_orientations{dim, n};
+    new_orientations.setZero();
     for (size_t i = 0; i < n; i++){
         for (auto j : connections[i]){
-            new_velocities.col(i) += velocities.col(j);
+            new_orientations.col(i) += orientations.col(j);
         }
     }
-    velocities = new_velocities;
+    orientations = new_orientations;
+    normalise(orientations);
 }
 
 
@@ -347,6 +349,12 @@ void load(T system, std::string filename){
 }
 
 
+/*
+ * TODO: rename velocities to orientations, and get rid of the speed
+ * 
+ * The velocity term should only be available in classes with true velocities
+ *  like Vicsek or Couzin.
+ */
 class AVS2D{  // [A]ligning [V]ectors with [S]carlar noise in [2D]
     public:
         int n_;
@@ -368,24 +376,18 @@ class AVS2D{  // [A]ligning [V]ectors with [S]carlar noise in [2D]
 };
 
 
-/*
- * TODO: rename velocities to orientations, and get rid of the speed
- * 
- * The velocity term should only be available in classes with true velocities
- *  like Vicsek or Couzin.
- */
 class AVS3D{  // [A]ligning [V]ectors with [S]carlar noise in [3D]
     public:
         int n_;
-        double speed_ = 1;
         const int dim_ = 3;
-        Coord3D velocities_; 
+        Coord3D orientations_; 
 
-        AVS3D(int n, double noise, double speed);
-        Coord3D& get_velocities() { return velocities_; };
-        void load_velocities(Coord3D);
+        AVS3D(int n, double noise);
+        virtual ~AVS3D(){};
+        Coord3D& get_orientations() { return orientations_; };
+        void load_orientations(Coord3D);
         inline double get_polarisation() {
-            return velocities_.rowwise().sum().norm() / n_ / speed_;
+            return orientations_.rowwise().sum().norm() / n_;
         };
         void add_noise();
 

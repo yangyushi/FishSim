@@ -317,8 +317,8 @@ void AVS2D::add_noise(){
 }
 
 
-AVS3D::AVS3D(int n, double noise, double speed)
-    : n_(n), speed_(speed), velocities_(dim_, n), noise_(noise){
+AVS3D::AVS3D(int n, double noise)
+    : n_(n), orientations_(dim_, n), noise_(noise){
 
     if (noise > 1){
         throw std::invalid_argument("noise should in range (0, 1)");
@@ -330,15 +330,15 @@ AVS3D::AVS3D(int n, double noise, double speed)
     vrxy = sqrt(1 - vz.pow(2));
     vphi.setRandom();
     vphi *= M_PI;  // vphi ~ U(-pi, pi)
-    velocities_.row(0) << vrxy * cos(vphi);
-    velocities_.row(1) << vrxy * sin(vphi);
-    velocities_.row(2) << vz;
-    normalise(velocities_, speed_);
+    orientations_.row(0) << vrxy * cos(vphi);
+    orientations_.row(1) << vrxy * sin(vphi);
+    orientations_.row(2) << vz;
+    normalise(orientations_);
 }
 
-void AVS3D::load_velocities(Coord3D velocities) {
-    this->velocities_ = velocities;
-    normalise(this->velocities_, speed_);
+void AVS3D::load_orientations(Coord3D velocities) {
+    orientations_ = velocities;
+    normalise(orientations_);
 };
 
 void AVS3D::add_noise(){
@@ -360,9 +360,9 @@ void AVS3D::add_noise(){
 
     for (int i = 0; i < n_; i++){
         RotMat R  = get_rotation_matrix(
-            velocities_(0, i), velocities_(1, i), velocities_(2, i)
+            orientations_(0, i), orientations_(1, i), orientations_(2, i)
         );
-        velocities_.col(i) = (R * noise_xyz.col(i)) * speed_;
+        orientations_.col(i) = R * noise_xyz.col(i);
     }
 }
 

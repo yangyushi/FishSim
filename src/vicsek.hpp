@@ -7,12 +7,15 @@
 
 class Vicsek3D : public AVS3D{
     protected:
+        double speed_;
         double rc_;
+        inline void update_velocity(){ velocities_ = orientations_ * speed_; }
         Conn connections_;
         VerletList<Coord3D> verlet_list_;
 
     public:
         Coord3D positions_;
+        Coord3D velocities_;
         Vicsek3D(int n, double r, double eta, double v0);
         void move(bool rebuild);
         void move_no_nl();  // without neighbour list
@@ -24,6 +27,8 @@ class Vicsek3D : public AVS3D{
         // for interact with python
         inline Coord3D& get_positions() { return positions_; };
         void load_positions(Coord3D);
+        inline Coord3D& get_velocities() { return velocities_; }
+        void load_velocities(Coord3D v);
 };
 
 
@@ -63,8 +68,8 @@ class Vicsek3DPBCVN : public Vicsek3DPBC{
 
 class Vicsek3DPBCInertia : public Vicsek3DPBC{
     public:
+        Coord3D old_orientations_;
         double alpha_;
-        Coord3D old_velocities_;
         Vicsek3DPBCInertia(int n, double r, double eta, double box, double v0, double alpha);
         void move(bool rebuild);
         void move_no_nl();  // without neighbour list

@@ -38,23 +38,12 @@ Couzin3D::Couzin3D(
     int n, double rr, double ro, double ra, double ap,
     double eta, double v0, double vt, double dt
 ) :
-    AVS3D{n, eta, v0}, verlet_list_{ra, ra * 3},
+    AVS3D{n, eta}, verlet_list_{ra, ra * 3}, speed_(v0),
     r_repel_(rr), r_align_(ro), r_attract_(ra),
     a_percept_(ap), v_turn_(vt), dt_(dt),
-    positions_{3, n},
-    velocities_real_{3, n}
+    positions_{3, n}, velocities_{3, n}
 {
-    Property vz{n}, vphi{n}, vrxy{n};
-    vz.setRandom(); // vz ~ U(-1, 1)
-    vrxy = sqrt(1 - vz.pow(2));
-    vphi.setRandom();
-    vphi *= M_PI;  // vphi ~ U(-pi, pi)
-    velocities_real_.row(0) << vrxy * cos(vphi);
-    velocities_real_.row(1) << vrxy * sin(vphi);
-    velocities_real_.row(2) << vz;
-    normalise(velocities_real_);
-    normalise(velocities_);
-
+    velocities_ = orientations_;
     positions_ = random_pos_no_overlap(rr, n);
 }
 
@@ -67,7 +56,7 @@ void Couzin3D::load_positions(Coord3D positions){
 
 bool Couzin3D::is_visible(int i, int j){
     Vec3D v1, v2;
-    v1 = velocities_real_.col(i);
+    v1 = velocities_.col(i);
     v2 = positions_.col(j);
     double aij = abs(get_angle(v1, v2));
     if (aij < a_percept_){
@@ -99,14 +88,14 @@ void Couzin3D::move(bool rebuild){
                 dij = shift_ij.norm();
                 oi -= shift_ij / dij;
             }
-            velocities_.col(i) = oi / oi.norm();
+            orientations_.col(i) = oi / oi.norm();
             continue;
         }
 
-        oi_align_ << velocities_real_.col(i);
+        oi_align_ << velocities_.col(i);
         for (auto j : conn_align_[i]){
             if (is_visible(i, j)) {
-                vj = velocities_real_.col(j);
+                vj = velocities_.col(j);
                 oi_align_ += vj;
             }
         }
@@ -127,20 +116,19 @@ void Couzin3D::move(bool rebuild){
         }
 
         oi = oi_align_ + oi_attr_;
-        velocities_.col(i) = oi / oi.norm();
+        orientations_.col(i) = oi / oi.norm();
     }
 
-    this->add_noise();  // rotate velocities_ randomly according to the noise
-    normalise(velocities_);
+    this->add_noise();  // rotate orientations_ randomly
 
     // try to align velocities to gargeted directions
     for (int i = 0; i < n_; i++){
-        Vec3D vi_old = velocities_real_.col(i);
-        Vec3D vi_target = velocities_.col(i);
+        Vec3D vi_old = velocities_.col(i);
+        Vec3D vi_target = orientations_.col(i);
         RotMat R = get_rotation_matrix(vi_old, vi_target, v_turn_ * dt_);
-        velocities_real_.col(i) << R * vi_old;
+        velocities_.col(i) << R * vi_old;
     }
-    positions_ += velocities_real_ * speed_ * dt_;
+    positions_ += velocities_ * speed_ * dt_;
 }
 
 
@@ -149,6 +137,3 @@ void Couzin3D::evolve(int steps, bool rebuild){
         this->move(rebuild);
     }
 }
-
-
-

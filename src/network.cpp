@@ -320,7 +320,7 @@ Graph random_vnm_graph_force_self(int d, int n){
 
 
 Network3D::Network3D(int n, int k, double eta)
-    : AVS3D{n, eta, 1.0}, k_(k) {
+    : AVS3D{n, eta}, k_(k) {
         this->update_graph();
 }
 
@@ -329,8 +329,7 @@ void Network3D::move(bool new_graph){
     if (new_graph){
         this->update_graph();
     }
-    vicsek_align(velocities_, connections_);
-    normalise(velocities_);
+    vicsek_align(orientations_, connections_);
     add_noise();
 }
 

@@ -1017,8 +1017,8 @@ PYBIND11_MODULE(cmodel, m){
                 py::return_value_policy::copy
         )
         .def_property("velocities",
-                &Vicsek3D::get_velocities, &Vicsek3D::load_velocities,
-                py::return_value_policy::copy
+            &Vicsek3D::get_velocities, &Vicsek3D::load_velocities,
+            py::return_value_policy::copy
         );
 
     py::class_<Vicsek3DPBC>(m, "Vicsek3DPBC")
@@ -1147,11 +1147,11 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         )
         .def(
-            "get_velocities", &Network3D::get_velocities,
-            "Retrieve the current velocities as numpy array of the system"
+            "get_orientations", &Network3D::get_orientations,
+            "Retrieve the current orientations as numpy array of the system"
         )
-        .def_property("velocities",
-            &Network3D::get_velocities, &Network3D::load_velocities,
+        .def_property("orientations",
+            &Network3D::get_orientations, &Network3D::load_orientations,
             py::return_value_policy::copy
         )
         .def_property("adj_mat",
@@ -1195,11 +1195,11 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         )
         .def(
-            "get_velocities", &Network3DRG::get_velocities,
+            "get_orientations", &Network3DRG::get_orientations,
             "Retrieve the current velocities as numpy array of the system"
         )
         .def_property("velocities",
-            &Network3DRG::get_velocities, &Network3DRG::load_velocities,
+            &Network3DRG::get_orientations, &Network3DRG::load_orientations,
             py::return_value_policy::copy
         )
         .def_property("adj_mat",
@@ -1301,5 +1301,10 @@ PYBIND11_MODULE(cmodel, m){
             &Couzin3D::get_positions, &Couzin3D::load_positions,
             py::return_value_policy::copy
         )
-        .def_readonly("dim", &Couzin3D::dim_);
+        .def_property("velocities",
+            &Couzin3D::get_velocities, &Couzin3D::load_velocities,
+            py::return_value_policy::copy
+        )
+        .def_readonly("dim", &Couzin3D::dim_)
+        .def_readonly("n", &Couzin3D::n_);
 }
