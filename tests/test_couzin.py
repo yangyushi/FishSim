@@ -4,7 +4,7 @@ sys.path.insert(0, '../lib')
 import fish_sim as fs
 
 
-def test_couzin():
+def test_couzin(repeat=False):
     args = {
         'n' : 100,
         'rr' : 1,
@@ -18,10 +18,10 @@ def test_couzin():
     }
     system = fs.cmodel.Couzin3D(**args)
     fs.utility.animate(
-        system, show=True, repeat=False, r=4,
+        system, show=True, repeat=repeat, r=4,
         frames=30, box=(-25, 25), fps=30,
         figsize=(5, 5)
     )
 
 if __name__ == "__main__":
-    test_couzin()
+    test_couzin(repeat=True)
