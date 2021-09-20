@@ -368,6 +368,12 @@ class AVS2D{  // [A]ligning [V]ectors with [S]carlar noise in [2D]
 };
 
 
+/*
+ * TODO: rename velocities to orientations, and get rid of the speed
+ * 
+ * The velocity term should only be available in classes with true velocities
+ *  like Vicsek or Couzin.
+ */
 class AVS3D{  // [A]ligning [V]ectors with [S]carlar noise in [3D]
     public:
         int n_;
