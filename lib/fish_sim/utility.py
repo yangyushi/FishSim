@@ -36,6 +36,63 @@ class FuncAnimationDisposable(animation.FuncAnimation):
         self._fig.canvas.mpl_disconnect(self._close_id)
 
 
+def plot_phase(
+        system, r=10, length=1, box=None,
+        save='', show=True, title="", figsize=(5, 5)
+):
+    fig = plt.figure(figsize=figsize, tight_layout=True)
+    if system.dim == 2:
+        ax = fig.add_subplot()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        if not isinstance(box, type(None)):
+            if type(box) == tuple:
+                ax.set_xlim(*box)
+                ax.set_ylim(*box)
+            else:
+                ax.set_xlim(0, box)
+                ax.set_ylim(0, box)
+        elif hasattr(system, 'box'):
+            ax.set_xlim(0, system.box)
+            ax.set_ylim(0, system.box)
+    elif system.dim == 3:
+        ax = fig.add_subplot(projection='3d')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+        if not isinstance(box, type(None)):
+            if type(box) == tuple:
+                ax.set_xlim(*box)
+                ax.set_ylim(*box)
+                ax.set_zlim(*box)
+            else:
+                ax.set_xlim(0, box)
+                ax.set_ylim(0, box)
+                ax.set_zlim(0, box)
+        elif hasattr(system, 'box'):
+            ax.set_xlim(0, system.box)
+            ax.set_ylim(0, system.box)
+            ax.set_zlim(0, system.box)
+    else:
+        return NotImplementedError("Only 2D and 3D systems are Supported")
+
+    scatter = ax.plot(
+        *system.positions, color='teal', mfc='w', ls='None', marker='o',
+        markersize=r
+    )[0]
+    quiver = ax.quiver(
+        *system.positions, *system.velocities, length=length, color='teal'
+    )
+    if title:
+        plt.title(title)
+    plt.tight_layout()
+    if save:
+        plt.savefig(save)
+    if show:
+        plt.show()
+    plt.close()
+
+
 def animate(
     system, r=100, jump=100, box=None, save='', fps=60,
     show=False, frames=100, interval=1, repeat=False, title="",
