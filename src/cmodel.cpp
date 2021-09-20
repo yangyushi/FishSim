@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "vicsek.hpp"
+#include "couzin.hpp"
 #include "network.hpp"
 #include "neighbour_list.hpp"
 #include <pybind11/pybind11.h>
@@ -1250,4 +1251,55 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         )
         .def_readonly("dim", &Voter::dim_);
+
+    py::class_<Couzin3D>(m, "Couzin3D")
+        .def(
+            py::init<
+                int,
+                double, double, double,
+                double,
+                double,
+                double,
+                double,
+                double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("rr"), pybind11::arg("ro"), pybind11::arg("ra"),
+            pybind11::arg("perception"),
+            pybind11::arg("noise"),
+            pybind11::arg("speed"),
+            pybind11::arg("turning_rate"),
+            pybind11::arg("dt")
+        )
+        .def(
+            "move", &Couzin3D::move,
+            R"---(
+            Advance the dynamic in the time unit of dt
+
+            Args:
+                rebuild (bool): if true, rebuild the neighbour list
+            )---",
+            py::arg("rebuild")=true
+        )
+        .def(
+            "evolve", &Couzin3D::evolve,
+            R"---(
+            Advance the dynamic, move multiple dt time points
+
+            Args:
+                steps (int): the number of Monte-Carlo steps to move.\
+                rebuild (int): if true, rebuild the neighbour list
+            )---",
+            py::arg("steps"), py::arg("rebuild")=true
+        )
+        .def(
+            "get_polarisation", &Couzin3D::get_polarisation,
+            "Calculate the get_polarisation per spin of current state of the system",
+            py::return_value_policy::copy
+        )
+        .def_property("positions",
+            &Couzin3D::get_positions, &Couzin3D::load_positions,
+            py::return_value_policy::copy
+        )
+        .def_readonly("dim", &Couzin3D::dim_);
 }

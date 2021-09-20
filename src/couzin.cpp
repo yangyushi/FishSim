@@ -66,11 +66,10 @@ void Couzin3D::load_positions(Coord3D positions){
 
 
 bool Couzin3D::is_visible(int i, int j){
-    return true;
     Vec3D v1, v2;
     v1 = velocities_real_.col(i);
     v2 = positions_.col(j);
-    double aij = get_angle(v1, v2);
+    double aij = abs(get_angle(v1, v2));
     if (aij < a_percept_){
         return true;
     }

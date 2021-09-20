@@ -38,9 +38,10 @@ class FuncAnimationDisposable(animation.FuncAnimation):
 
 def animate(
     system, r=100, jump=100, box=None, save='', fps=60,
-    show=False, frames=100, interval=1, repeat=False, title=""
+    show=False, frames=100, interval=1, repeat=False, title="",
+    figsize=(5, 5)
 ):
-    fig = plt.figure(figsize=(5, 5), tight_layout=True)
+    fig = plt.figure(figsize=figsize, tight_layout=True)
     if system.dim == 2:
         ax = fig.add_subplot()
         ax.set_xticks([])

@@ -35,6 +35,9 @@ target_link_libraries(network core eigen)
 add_library(vicsek STATIC src/vicsek.cpp src/vicsek.hpp)
 target_link_libraries(vicsek core neighbour_list eigen)
 
+add_library(couzin STATIC src/couzin.cpp src/couzin.hpp)
+target_link_libraries(couzin core eigen)
+
 if(OpenMP_CXX_FOUND)
     target_link_libraries(neighbour_list OpenMP::OpenMP_CXX)
     target_link_libraries(core OpenMP::OpenMP_CXX)
@@ -44,7 +47,7 @@ endif()
 add_library(cmodel MODULE src/cmodel.cpp)
 target_link_libraries(
     cmodel PRIVATE pybind11::module pybind11::lto
-    core neighbour_list network vicsek eigen
+    core neighbour_list network vicsek couzin eigen
     )
 pybind11_extension(cmodel)
 set_target_properties(cmodel PROPERTIES CXX_VISIBILITY_PRESET "hidden")
