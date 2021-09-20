@@ -8,10 +8,10 @@ This is a collection of simulation code I wrote for my PhD project in the univer
 
 I implemented the following models for the collective behaviour.
 
-- The voter model (JAP, MA, CH, HL, *PRE*, **2008**)
-- The Vectorial Network Model (MA, CH, *J. Stat. Phys.*, **2003**)
-- The Vicsek Model (TV, AC, EBJ, IC, OS, *PRL*, **1995**)
-- The Couzin Model (IDC, JK, GDR, NRF, *J. theor. Biol.*, **2002**)
+- The voter model (JAP, MA, CH, HL, *PRE*, **2008**, [link to paper](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.77.061138))
+- The Vectorial Network Model (MA, CH, *J. Stat. Phys.*, **2003**, [link to paper](https://link.springer.com/article/10.1023/A:1023675519930))
+- The Vicsek Model (TV, AC, EBJ, IC, OS, *PRL*, **1995**, [link to paper](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.75.1226))
+- The Couzin Model (IDC, JK, GDR, NRF, *J. theor. Biol.*, **2002**, [link to paper](https://www.sciencedirect.com/science/article/pii/S0022519302930651))
 
 
 ## Use the module
