@@ -92,14 +92,23 @@ class Vicsek3DPBCInertiaAF : public Vicsek3DPBCInertia{
 class Vicsek2D : public AVS2D{
     protected:
         double rc_;
+        double speed_;
         Conn connections_;
         VerletList<Coord2D> verlet_list_;
+        void update_velocity();
 
     public:
         Coord2D positions_;
+        Coord2D velocities_;
         Vicsek2D(int n, double r, double eta, double v0);
         void move(bool rebuild);
         void move_no_nl();  // without neighbour list
+
+        // for interact with python
+        inline Coord2D& get_positions() { return positions_; };
+        inline void load_positions(Coord2D p) {positions_ = p;} ;
+        inline Coord2D& get_velocities() { return velocities_; }
+        void load_velocities(Coord2D v);
 };
 
 
@@ -130,7 +139,7 @@ class Vicsek2DPBCVN : public Vicsek2DPBC{
 
 class Vicsek2DPBCVNCO : public Vicsek2DPBC{
     private:
-        void update_velocity();
+        void apply_interaction();
         double alpha_;
         double beta_;
         double ra_;

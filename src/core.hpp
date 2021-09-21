@@ -349,26 +349,19 @@ void load(T system, std::string filename){
 }
 
 
-/*
- * TODO: rename velocities to orientations, and get rid of the speed
- * 
- * The velocity term should only be available in classes with true velocities
- *  like Vicsek or Couzin.
- */
 class AVS2D{  // [A]ligning [V]ectors with [S]carlar noise in [2D]
     public:
         int n_;
-        double speed_ = 1;
         const int dim_ = 2;
-        Coord2D velocities_; 
+        Coord2D orientations_; 
 
-        AVS2D(int n, double noise, double speed);
+        AVS2D(int n, double noise);
         void add_noise();
 
-        Coord2D& get_velocities() { return velocities_; };
-        void load_velocities(Coord2D);
+        Coord2D& get_orientations() { return orientations_; };
+        void load_orientations(Coord2D);
         inline double get_polarisation() {
-            return velocities_.rowwise().sum().norm() / n_ / speed_;
+            return orientations_.rowwise().sum().norm() / n_;
         };
 
     protected:

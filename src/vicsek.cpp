@@ -218,26 +218,42 @@ void Vicsek3DPBCVN::move_no_nl(){
 
 
 Vicsek2D::Vicsek2D(int n, double r, double eta, double v0)
-    : AVS2D{n, eta, v0}, rc_(r), verlet_list_(r, r + v0), positions_(2, n){
+    : AVS2D{n, eta}, rc_(r), speed_(v0), verlet_list_(r, r + v0),
+      positions_(2, n), velocities_(2, n){
           positions_.setRandom();
+          this->update_velocity();
     }
+
+
+void Vicsek2D::update_velocity(){
+    velocities_ = orientations_ * speed_;
+}
+
+
+void Vicsek2D::load_velocities(Coord2D v){
+    velocities_ = v;
+    orientations_ = v;
+    normalise(orientations_);
+}
 
 
 void Vicsek2D::move(bool rebuild){
     if (rebuild) verlet_list_.build(positions_);
     connections_ = verlet_list_.get_conn(positions_);
-    vicsek_align(velocities_, connections_);
-    normalise(velocities_);  // speed = 1
-    add_noise();  // speed = speed
+    vicsek_align(orientations_, connections_);
+    this->add_noise();
+    this->update_velocity();
     positions_ += velocities_;
 }
  
 
 void Vicsek2D::move_no_nl(){
     connections_ = get_connections(positions_, rc_);
-    vicsek_align(velocities_, connections_);
-    normalise(velocities_);
-    add_noise();
+
+    vicsek_align(orientations_, connections_);
+    this->add_noise();
+    this->update_velocity();
+
     positions_ += velocities_;
 }
 
@@ -251,15 +267,18 @@ Vicsek2DPBC::Vicsek2DPBC(int n, double r, double eta, double box, double v0)
         }
         positions_.setRandom(2, n_);
         positions_ = (positions_.array() + 1) / 2 * box;
+        this->update_velocity();
     }
 
 
 void Vicsek2DPBC::move(bool rebuild){
     if (rebuild) cell_list_.build(positions_);
     connections_ = cell_list_.get_conn(positions_);
-    vicsek_align(velocities_, connections_);
-    normalise(velocities_);  // speed = 1
-    add_noise();  // speed = speed
+
+    vicsek_align(orientations_, connections_);
+    this->add_noise();
+    this->update_velocity();
+
     positions_ += velocities_;
     fix_positions();
 }
@@ -267,9 +286,11 @@ void Vicsek2DPBC::move(bool rebuild){
 
 void Vicsek2DPBC::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
-    vicsek_align(velocities_, connections_);
-    normalise(velocities_);
-    add_noise();
+
+    vicsek_align(orientations_, connections_);
+    this->add_noise();
+    this->update_velocity();
+
     positions_ += velocities_;
     fix_positions();
 }
@@ -301,8 +322,10 @@ Vicsek2DPBCVN::Vicsek2DPBCVN(int n, double r, double eta, double box, double v0)
 void Vicsek2DPBCVN::move(bool rebuild){
     if (rebuild) cell_list_.build(positions_);
     connections_ = cell_list_.get_conn(positions_);
-    vicsek_align_vn(velocities_, connections_, noise_);
-    normalise(velocities_, speed_);
+
+    vicsek_align_vn(orientations_, connections_, noise_);
+    this->update_velocity();
+
     positions_ += velocities_;
     fix_positions();
 }
@@ -310,8 +333,10 @@ void Vicsek2DPBCVN::move(bool rebuild){
 
 void Vicsek2DPBCVN::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
-    vicsek_align_vn(velocities_, connections_, noise_);
-    normalise(velocities_, speed_);
+
+    vicsek_align_vn(orientations_, connections_, noise_);
+    this->update_velocity();
+
     positions_ += velocities_;
     fix_positions();
 }
@@ -336,14 +361,14 @@ Vicsek2DPBCVNCO::Vicsek2DPBCVNCO(int n, double r, double eta, double box, double
     }
 
 
-void Vicsek2DPBCVNCO::update_velocity(){
+void Vicsek2DPBCVNCO::apply_interaction(){
     /*
      * See chatelEPJ2008 for equations
      */
     Property noise_phi{1, n_};
     Coord2D noise_xy{2, n_};
-    Coord2D new_velocities{2, n_};
-    new_velocities.setZero();
+    Coord2D new_orientations{2, n_};
+    new_orientations.setZero();
     Vec2D shift;
     Vec2D v_force;
     Vec2D v_avoid;
@@ -363,7 +388,7 @@ void Vicsek2DPBCVNCO::update_velocity(){
         n_avoid = 0;
         for (auto j : connections_[i]){
             if (i == j){
-                v_force += a * velocities_.col(j);
+                v_force += a * orientations_.col(j);
             } else {
                 shift = get_shift(positions_.col(j), positions_.col(i));
                 dij = shift.matrix().norm();
@@ -372,27 +397,27 @@ void Vicsek2DPBCVNCO::update_velocity(){
                     n_avoid += 1;  // fij = infty
                     v_avoid += shift * -1;
                 } else if (dij < ra_) {
-                    v_force += a * velocities_.col(j) + beta_ * shift * c_ * (dij - re_);
+                    v_force += a * orientations_.col(j) + beta_ * shift * c_ * (dij - re_);
                 } else {
-                    v_force += a * velocities_.col(j) + beta_ * shift;  // fij = 1
+                    v_force += a * orientations_.col(j) + beta_ * shift;  // fij = 1
                 }
             }
         }
         if (n_avoid > 0){
-            new_velocities.col(i) = v_avoid;
+            new_orientations.col(i) = v_avoid;
         } else {
-            new_velocities.col(i) = v_force + noise_xy.col(i) * connections_[i].size();
+            new_orientations.col(i) = v_force + noise_xy.col(i) * connections_[i].size();
         }
     }
-    normalise(new_velocities, speed_);
-    velocities_ = new_velocities;
+    orientations_ = new_orientations;
+    this->update_velocity();
 }
 
 
 void Vicsek2DPBCVNCO::move(bool rebuild){
     if (rebuild) cell_list_.build(positions_);
     connections_ = cell_list_.get_conn(positions_);
-    update_velocity();
+    this->apply_interaction();
     positions_ += velocities_;
     fix_positions();
 }
@@ -400,7 +425,7 @@ void Vicsek2DPBCVNCO::move(bool rebuild){
 
 void Vicsek2DPBCVNCO::move_no_nl(){
     connections_ = get_connections_pbc(positions_, rc_, box_);
-    update_velocity();
+    this->apply_interaction();
     positions_ += velocities_;
     fix_positions();
 }

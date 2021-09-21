@@ -284,8 +284,8 @@ void voter_align(Spins& spins, Property& states, const Conn& connections){
 }
 
 
-AVS2D::AVS2D(int n, double noise, double speed)
-    : n_(n), speed_(speed), velocities_(dim_, n), noise_(noise) {
+AVS2D::AVS2D(int n, double noise)
+    : n_(n), orientations_(dim_, n), noise_(noise) {
     // generate random vector on a unit circle
 
     if (noise > 1){
@@ -294,26 +294,26 @@ AVS2D::AVS2D(int n, double noise, double speed)
         throw std::invalid_argument("noise should in range (0, 1)");
     }
     Property vr{n_}, vphi{n_};
-    vr.setConstant(speed_);
+    vr.setOnes();
     vphi.setRandom();
     vphi *= M_PI;  // vphi ~ U(-pi, pi)
-    velocities_.row(0) << vr * cos(vphi);
-    velocities_.row(1) << vr * sin(vphi);
+    orientations_.row(0) << vr * cos(vphi);
+    orientations_.row(1) << vr * sin(vphi);
 }
 
-void AVS2D::load_velocities(Coord2D velocities) {
-    this->velocities_ = velocities;
-    normalise(this->velocities_, speed_);
+void AVS2D::load_orientations(Coord2D orientations) {
+    this->orientations_ = orientations;
+    normalise(this->orientations_);
 };
 
 void AVS2D::add_noise(){
     Property noise_phi{1, n_};
-    Property phi = xy_to_phi(velocities_);
+    Property phi = xy_to_phi(orientations_);
     noise_phi.setRandom(); // ~ U(-1, 1)
     noise_phi *= M_PI * noise_; // phi ~ U(-PI * eta, PI * eta)
     phi += noise_phi;
-    velocities_.row(0) = speed_ * cos(phi);
-    velocities_.row(1) = speed_ * sin(phi);
+    orientations_.row(0) = cos(phi);
+    orientations_.row(1) = sin(phi);
 }
 
 
@@ -336,8 +336,8 @@ AVS3D::AVS3D(int n, double noise)
     normalise(orientations_);
 }
 
-void AVS3D::load_orientations(Coord3D velocities) {
-    orientations_ = velocities;
+void AVS3D::load_orientations(Coord3D orientations) {
+    orientations_ = orientations;
     normalise(orientations_);
 };
 
