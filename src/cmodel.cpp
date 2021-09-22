@@ -2,6 +2,7 @@
 #include "vicsek.hpp"
 #include "couzin.hpp"
 #include "network.hpp"
+#include "boundary.hpp"
 #include "neighbour_list.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -1252,59 +1253,43 @@ PYBIND11_MODULE(cmodel, m){
         )
         .def_readonly("dim", &Voter::dim_);
 
-    py::class_<Couzin3D>(m, "Couzin3D")
+    py::class_<FishBowl3D>(m, "FishBowl3D")
         .def(
-            py::init<
-                int,
-                double, double, double,
-                double,
-                double,
-                double,
-                double,
-                double
-            >(),
-            pybind11::arg("n"),
-            pybind11::arg("rr"), pybind11::arg("ro"), pybind11::arg("ra"),
-            pybind11::arg("perception"),
-            pybind11::arg("noise"),
-            pybind11::arg("speed"),
-            pybind11::arg("turning_rate"),
-            pybind11::arg("dt")
+            py::init< double, double >(),
+            pybind11::arg("c"),
+            pybind11::arg("z_max")
         )
         .def(
-            "move", &Couzin3D::move,
+            "get_random_positions", &FishBowl3D::get_random_positions,
             R"---(
-            Advance the dynamic in the time unit of dt
+            Generate random points inside the boundary
 
             Args:
-                rebuild (bool): if true, rebuild the neighbour list
+                n (int): the number of particles inside the fish bowl
             )---",
-            py::arg("rebuild")=true
+            py::arg("n")
         )
         .def(
-            "evolve", &Couzin3D::evolve,
+            "get_random_positions_reject", &FishBowl3D::get_random_positions_reject,
             R"---(
-            Advance the dynamic, move multiple dt time points
+            Generate random points inside the boundary using rejection method
 
             Args:
-                steps (int): the number of Monte-Carlo steps to move.\
-                rebuild (int): if true, rebuild the neighbour list
+                n (int): the number of particles inside the fish bowl
             )---",
-            py::arg("steps"), py::arg("rebuild")=true
+            py::arg("n")
         )
         .def(
-            "get_polarisation", &Couzin3D::get_polarisation,
-            "Calculate the get_polarisation per spin of current state of the system",
-            py::return_value_policy::copy
-        )
-        .def_property("positions",
-            &Couzin3D::get_positions, &Couzin3D::load_positions,
-            py::return_value_policy::copy
-        )
-        .def_property("velocities",
-            &Couzin3D::get_velocities, &Couzin3D::load_velocities,
-            py::return_value_policy::copy
-        )
-        .def_readonly("dim", &Couzin3D::dim_)
-        .def_readonly("n", &Couzin3D::n_);
+            "project", &FishBowl3D::project,
+            R"---(
+            Generate random points inside the boundary.
+
+            Args:
+                xyz (numpy.ndarray): the coordinates, shape (3, n).
+
+            Return:
+               numpy.ndarray: the points projected on the bottom of the bowl.
+            )---",
+            py::arg("xyz")
+        );
 }

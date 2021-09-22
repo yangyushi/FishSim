@@ -48,5 +48,4 @@ class Couzin3D : public AVS3D {
 };
 
 
-
 #endif
