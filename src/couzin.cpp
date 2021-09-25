@@ -137,3 +137,94 @@ void Couzin3D::evolve(int steps, bool rebuild){
         this->move(rebuild);
     }
 }
+
+
+CouzinTank3D::CouzinTank3D(
+            int n,
+            double rr, double ro, double ra,  // repel, align, attract ranges
+            double ap,  // angle of perception
+            double eta, // noise
+            double v0,  // speed
+            double vt,  // turning rate
+            double dt,  // delta time
+            double c,   // shape parameter for tank
+            double h,   // height of tank
+            double kw   // strength of wall interaction
+        ) :
+    Couzin3D(n, rr, ro, ra, ap, eta, v0, vt, dt),
+    tank_{c, h, kw}
+{
+    positions_ = tank_.get_random_positions(n);
+}
+
+
+void CouzinTank3D::move_in_tank(bool rebuild){
+    if (rebuild) {
+        verlet_list_.build(positions_);
+        std::vector<Conn> conn_list = verlet_list_.get_neighbour_conn_slow(
+            positions_, std::vector<double>{0, r_repel_, r_align_, r_attract_}
+        );
+        conn_repel_ = conn_list[0];
+        conn_align_ = conn_list[1];
+        conn_attract_ = conn_list[2];
+    }
+
+    Vec3D shift_ij, oi, vj, oi_attr_, oi_align_;
+    double dij = 0;
+
+    for (int i = 0; i < n_; i++){  // determine the target orientations
+        if (conn_repel_[i].size() > 0){  // repel dominate
+            oi << 0, 0, 0;
+            for (auto j : conn_repel_[i]){
+                shift_ij = positions_.col(j) - positions_.col(i);
+                dij = shift_ij.norm();
+                oi -= shift_ij / dij;
+            }
+            orientations_.col(i) = oi / oi.norm();
+            continue;
+        }
+
+        oi_align_ << velocities_.col(i);
+        for (auto j : conn_align_[i]){
+            if (is_visible(i, j)) {
+                vj = velocities_.col(j);
+                oi_align_ += vj;
+            }
+        }
+        oi_align_ = oi_align_ / oi_align_.norm();
+
+        bool see_neighbour = false;
+        oi_attr_ << 0, 0, 0;
+        for (auto j : conn_attract_[i]){
+            if (is_visible(i, j)) {
+                shift_ij = positions_.col(j) - positions_.col(i);
+                dij = shift_ij.norm();
+                oi_attr_ += shift_ij / dij;
+                see_neighbour = true;
+            }
+        }
+        if (see_neighbour){
+            oi_attr_ = oi_attr_ / oi_attr_.norm();
+        }
+
+        oi = oi_align_ + oi_attr_;
+        orientations_.col(i) = oi / oi.norm();
+    }
+
+    this->add_noise();  // rotate orientations_ randomly
+
+
+    // try to align velocities to gargeted directions
+    for (int i = 0; i < n_; i++){
+        Vec3D vi_old = velocities_.col(i);
+        Vec3D vi_target = orientations_.col(i);
+        RotMat R = get_rotation_matrix(vi_old, vi_target, v_turn_ * dt_);
+        velocities_.col(i) << R * vi_old;
+    }
+
+    tank_.fix_orientations(positions_, velocities_);
+
+    positions_ += velocities_ * speed_ * dt_;
+
+    //tank_.fix_positions(positions_);
+}

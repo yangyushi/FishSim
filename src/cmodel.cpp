@@ -995,7 +995,6 @@ PYBIND11_MODULE(cmodel, m){
         py::arg("k"), py::arg("n"), py::arg("include_self")=false
     );
 
-
     py::class_<Vicsek3D>(m, "Vicsek3D")
         .def(
             py::init<
@@ -1253,14 +1252,84 @@ PYBIND11_MODULE(cmodel, m){
         )
         .def_readonly("dim", &Voter::dim_);
 
-    py::class_<FishBowl3D>(m, "FishBowl3D")
+    py::class_<Couzin3D>(m, "Couzin3D")
         .def(
-            py::init< double, double >(),
+            py::init<
+                int, double, double, double,
+                double, double, double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("rr"),
+            pybind11::arg("ro"),
+            pybind11::arg("ra"),
+            pybind11::arg("perception"),
+            pybind11::arg("noise"),
+            pybind11::arg("speed"),
+            pybind11::arg("turn_rate"),
+            pybind11::arg("dt")
+        )
+        .def("move", &Couzin3D::move, py::arg("rebuild")=true)
+        .def("evolve", &Couzin3D::evolve, py::arg("steps"), py::arg("rebuild")=true)
+        .def("get_polarisation", &Couzin3D::get_polarisation)
+        .def("get_velocities", &Couzin3D::get_velocities)
+        .def("get_positions", &Couzin3D::get_positions)
+        .def("load_velocities", &Couzin3D::load_velocities)
+        .def_readonly("dim", &Couzin3D::dim_)
+        .def_property("positions",
+                &Couzin3D::get_positions, &Couzin3D::load_positions,
+                py::return_value_policy::copy
+        )
+        .def_property("velocities",
+            &Couzin3D::get_velocities, &Couzin3D::load_velocities,
+            py::return_value_policy::copy
+        );
+
+    py::class_<CouzinTank3D>(m, "CouzinTank3D")
+        .def(
+            py::init<
+                int, double, double, double,
+                double, double, double, double, double,
+                double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("rr"),
+            pybind11::arg("ro"),
+            pybind11::arg("ra"),
+            pybind11::arg("perception"),
+            pybind11::arg("noise"),
+            pybind11::arg("speed"),
+            pybind11::arg("turn_rate"),
+            pybind11::arg("dt"),
             pybind11::arg("c"),
-            pybind11::arg("z_max")
+            pybind11::arg("h"),
+            pybind11::arg("kw")
+        )
+        .def("move", &CouzinTank3D::move_in_tank, py::arg("rebuild")=true)
+        .def("evolve", &CouzinTank3D::evolve_in_tank, py::arg("steps"), py::arg("rebuild")=true)
+        .def("get_polarisation", &CouzinTank3D::get_polarisation)
+        .def("get_velocities", &CouzinTank3D::get_velocities)
+        .def("get_positions", &CouzinTank3D::get_positions)
+        .def("load_velocities", &CouzinTank3D::load_velocities)
+        .def_readonly("dim", &CouzinTank3D::dim_)
+        .def_property("positions",
+            &CouzinTank3D::get_positions, &CouzinTank3D::load_positions,
+            py::return_value_policy::copy
+        )
+        .def_property("velocities",
+            &CouzinTank3D::get_velocities, &CouzinTank3D::load_velocities,
+            py::return_value_policy::copy
+        );
+
+
+    py::class_<Tank3D>(m, "Tank3D")
+        .def(
+            py::init< double, double, double >(),
+            pybind11::arg("c"),
+            pybind11::arg("z_max"),
+            pybind11::arg("kw")  // strength of wall interaction
         )
         .def(
-            "get_random_positions", &FishBowl3D::get_random_positions,
+            "get_random_positions", &Tank3D::get_random_positions,
             R"---(
             Generate random points inside the boundary
 
@@ -1270,7 +1339,7 @@ PYBIND11_MODULE(cmodel, m){
             py::arg("n")
         )
         .def(
-            "get_random_positions_reject", &FishBowl3D::get_random_positions_reject,
+            "get_random_positions_reject", &Tank3D::get_random_positions_reject,
             R"---(
             Generate random points inside the boundary using rejection method
 
@@ -1280,7 +1349,7 @@ PYBIND11_MODULE(cmodel, m){
             py::arg("n")
         )
         .def(
-            "project", &FishBowl3D::project,
+            "project", &Tank3D::project,
             R"---(
             Generate random points inside the boundary.
 

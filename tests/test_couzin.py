@@ -13,14 +13,14 @@ def test_couzin(repeat=False):
         'perception' : 90 / 180 * np.pi,
         'noise':0.1,
         'speed': 3,
-        'turning_rate':40 / 180 * np.pi,
+        'turn_rate':40 / 180 * np.pi,
         'dt':0.005
     }
     system = fs.cmodel.Couzin3D(**args)
     fs.utility.animate(
         system, show=True, repeat=repeat, r=4,
         frames=30, box=(-25, 25), fps=30,
-        figsize=(5, 5)
+        figsize=(5, 5), arrow=1
     )
 
 if __name__ == "__main__":
