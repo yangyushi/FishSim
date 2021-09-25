@@ -10,6 +10,10 @@ from scipy.spatial.distance import pdist, cdist, squareform
 from .noise_3d import add_vicsek_noise_3d
 from .force import force_lj, force_wca
 
+def _quiver_data_to_segments(X, Y, Z, u, v, w, length=1):
+    segments = (X, Y, Z, X+v*length, Y+u*length, Z+w*length)
+    segments = np.array(segments).reshape(6,-1)
+    return [[[x, y, z], [u, v, w]] for x, y, z, u, v, w in zip(*list(segments))]
 
 class FuncAnimationDisposable(animation.FuncAnimation):
     def __init__(self, fig, func, **kwargs):
@@ -96,7 +100,7 @@ def plot_phase(
 def animate(
     system, r=100, jump=100, box=None, save='', fps=60,
     show=False, frames=100, interval=1, repeat=False, title="",
-    figsize=(5, 5)
+    figsize=(5, 5), arrow=0.05
 ):
     fig = plt.figure(figsize=figsize, tight_layout=True)
     if system.dim == 2:
@@ -143,8 +147,12 @@ def animate(
         if system.dim == 3:
             scatter.set_data(system.positions[:2])
             scatter.set_3d_properties(system.positions[2])
+            seg = _quiver_data_to_segments(*system.positions, *system.velocities, length=arrow)
+            quiver.set_segments(seg)
         else:
             scatter.set_data(system.positions)
+            quiver.set_offsets(system.positions)
+            quiver.set_uvc(system.velocities)
             if (num == end_frame_num) and not repeat:
                 raise StopIteration
         return scatter
@@ -153,6 +161,11 @@ def animate(
         *system.positions, color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
+    quiver = ax.quiver(
+        *system.positions, *system.velocities, color='teal',
+        pivot='middle', length=arrow
+    )
+
     ani = FuncAnimationDisposable(
         fig, update, frames=frames, fargs=(system, scatter), interval=interval,
         blit=False, repeat=repeat
