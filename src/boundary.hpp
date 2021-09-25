@@ -17,22 +17,29 @@ struct Boundary{
  * z = c * r^2
  * r = sqrt(z / c)
  */
-struct FishBowl3D : public Boundary {
+struct Tank3D : public Boundary {
     // generate uniform random points inside the boundary 
     Coord3D get_random_positions(size_t n);
     Coord3D get_random_positions_reject(size_t n);
     // for all 3D points, calculate the cloest point on the bottom of the bowl
     Coord3D project(const Coord3D& xyz);
-    const double c_, z_max_, r_max_, volume_;
+    Coord3D project_single(const Vec3D& xyz);
 
-    FishBowl3D(double c, double z_max);
+    // convert xyz coordinate system to r-z-theta coordinates
+    Vec3D to_rzt(const Vec3D& xyz);
+
+    const double c_, z_max_, kw_, r_max_, volume_;
+
+    Tank3D(double c, double z_max, double kw);
 
     bool is_inside(double x, double y, double z) ;
     bool is_inside(Vec3D position) ;
-    inline void fix_positions(Coord3D& positions) {} ; // do nothing
+    void fix_positions(Coord3D& positions); // do nothing
     void fix_orientations(
         const Coord3D& positions, Coord3D& orientations
     );
+    void fix_orientations_cap(Coord3D& o, size_t i); // no above tank
+    void fix_orientations_base(Coord3D& o, size_t i, const Vec3D& orient_proj); // no outside tank
 };
 
 #endif
