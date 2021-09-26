@@ -4,9 +4,9 @@
 
 
 struct Boundary{
-    virtual void fix_positions(Coord3D& positions){};
+    virtual void fix_positions(Coord3D& positions, double dt){};
     virtual void fix_orientations(
-        const Coord3D& positions, Coord3D& orientations
+        const Coord3D& positions, Coord3D& orientations, double dt
     ){};
     Boundary(){};
     virtual ~Boundary(){};
@@ -34,12 +34,10 @@ struct Tank3D : public Boundary {
 
     bool is_inside(double x, double y, double z) ;
     bool is_inside(Vec3D position) ;
-    void fix_positions(Coord3D& positions); // do nothing
+    void fix_positions(Coord3D& positions, double dt); // do nothing
     void fix_orientations(
-        const Coord3D& positions, Coord3D& orientations
+        const Coord3D& positions, Coord3D& orientations, double dt
     );
-    void fix_orientations_cap(Coord3D& o, size_t i); // no above tank
-    void fix_orientations_base(Coord3D& o, size_t i, const Vec3D& orient_proj); // no outside tank
 };
 
 #endif

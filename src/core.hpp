@@ -8,6 +8,7 @@
 #include <random>
 #include <vector>
 #include <string>
+#include <complex>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -16,6 +17,9 @@
 #include <Eigen/Geometry>
 #include <Eigen/LU>
 
+using PropertyComplex = Eigen::Array<
+    std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor
+    >;  // (1, n)
 using Property = Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 using Spins = Eigen::Array<int, 1, Eigen::Dynamic, Eigen::RowMajor>;  // (1, n)
 

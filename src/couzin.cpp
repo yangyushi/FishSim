@@ -222,9 +222,7 @@ void CouzinTank3D::move_in_tank(bool rebuild){
         velocities_.col(i) << R * vi_old;
     }
 
-    tank_.fix_orientations(positions_, velocities_);
+    tank_.fix_orientations(positions_, velocities_, dt_);
 
     positions_ += velocities_ * speed_ * dt_;
-
-    //tank_.fix_positions(positions_);
 }
