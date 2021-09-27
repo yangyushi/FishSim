@@ -45,6 +45,8 @@ using RotMat = Eigen::Matrix3d;
 using Vec2D = Eigen::Matrix<double, 2, 1>;  // (2, 1)
 using Vec3D = Eigen::Matrix<double, 3, 1>;  // (3, 1)
 
+const double _EPS = 100 * std::numeric_limits<double>::epsilon();
+
 
 // Same behaviour as ``numpy.unravel_index``
 Index3D unravel_index(int index, Index3D shape);
@@ -79,6 +81,16 @@ RotMat get_rotation_matrix(Vec3D v1, Vec3D v2);
  * the angle of theta, in the correct direction
 */
 RotMat get_rotation_matrix(Vec3D v1, Vec3D v2, double theta);
+
+
+template<class T>
+void check_nan(T numbers){
+    for (auto num : numbers){
+        if (std::isnan(num)){
+            throw std::runtime_error("null value in ");
+        }
+    }
+}
 
 
 template <typename T>

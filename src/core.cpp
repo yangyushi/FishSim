@@ -198,7 +198,7 @@ RotMat get_rotation_matrix(double x, double y, double z){
 RotMat get_rotation_matrix(Vec3D v1, Vec3D v2){
     RotMat F, G, R;
     R << 1, 0, 0, 0, 1, 0, 0, 0, 1;
-    if ((v1 - v2).norm() <= 100 * std::numeric_limits<double>::epsilon()){
+    if ((v1 - v2).norm() <= _EPS){
         return R;
     }
     double n1 = (double) v1.norm(),
@@ -230,7 +230,7 @@ RotMat get_rotation_matrix(Vec3D v1, Vec3D v2){
 RotMat get_rotation_matrix(Vec3D v1, Vec3D v2, double theta){
     RotMat F, G, R;
     R << 1, 0, 0, 0, 1, 0, 0, 0, 1;
-    if (abs((v1 - v2).norm()) <= 100 * std::numeric_limits<double>::epsilon()){
+    if (abs((v1 - v2).norm()) <= _EPS){
         return R;
     }
     double n1 = v1.norm(),
