@@ -84,9 +84,10 @@ RotMat get_rotation_matrix(Vec3D v1, Vec3D v2, double theta);
 
 
 template<class T>
-void check_nan(T numbers){
+void check_nan(T numbers, std::string info){
     for (auto num : numbers){
         if (std::isnan(num)){
+            std::cout << info << std::endl;
             throw std::runtime_error("null value in ");
         }
     }

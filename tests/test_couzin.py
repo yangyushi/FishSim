@@ -14,7 +14,7 @@ def test_couzin(repeat=False):
         'noise':0.1,
         'speed': 3,
         'turn_rate':40 / 180 * np.pi,
-        'dt':0.1
+        'dt':0.01
     }
     system = fs.cmodel.Couzin3D(**args)
     fs.utility.animate(
@@ -27,18 +27,20 @@ def test_couzin(repeat=False):
 def test_couzin_tank(repeat=False):
     args = {
         'n' : 50,
-        'rr' : 20 / 1e3,
-        'ro' : 50 / 1e3,
-        'ra' : 200 / 1e3,
+        'rr' : 0 / 1e3,
+        'ro' : 0 / 1e3,
+        'ra' : 0 / 1e3,
         'perception' : 90 / 180 * np.pi,
-        'noise':0.2,
+        'noise':0.5,
         'speed': 0.1,
         'turn_rate':40 / 180 * np.pi,
-        'dt':0.01,
+        'dt':0.005,
         'c': 0.743,
         'h': 0.5,
-        'kw': 0.1,
-        'align': True,
+        'kw': 0.01,
+        'align_cap': False,
+        'align_base': True,
+        'g': 1,
     }
     system = fs.cmodel.CouzinTank3D(**args)
     fs.utility.animate(

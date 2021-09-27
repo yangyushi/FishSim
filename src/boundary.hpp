@@ -29,16 +29,23 @@ struct Tank3D : public Boundary {
     Vec3D to_rzt(const Vec3D& xyz);
 
     const double c_, z_max_, kw_, r_max_, volume_;
-    const bool align_;
+    const bool align_cap_, align_base_;
 
-    Tank3D(double c, double z_max, double kw, bool align);
+    Tank3D(double c, double z_max, double kw, bool align_cap, bool align_base);
 
     bool is_inside(double x, double y, double z) ;
     bool is_inside(Vec3D position) ;
-    void fix_positions(Coord3D& positions, double dt); // do nothing
     void fix_orientations(
         const Coord3D& positions, Coord3D& orientations, double dt
     );
+    void fix_positions(Coord3D& positions, double dt);
+};
+
+
+struct Gravity{
+    const double g_;
+    Gravity (double g);
+    void fix_orientations(const Coord3D& positions, Coord3D& orientations, double dt);
 };
 
 #endif

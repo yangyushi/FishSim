@@ -1,8 +1,8 @@
 #include "boundary.hpp"
 
-Tank3D::Tank3D(double c, double z_max, double kw, bool align) :
+Tank3D::Tank3D(double c, double z_max, double kw, bool align_cap, bool align_base) :
     c_(c), z_max_(z_max), kw_(kw), r_max_(sqrt(z_max / c)),
-    volume_(M_PI/2/c * z_max*z_max), align_(align) {
+    volume_(M_PI/2/c * z_max*z_max), align_cap_(align_cap), align_base_(align_base) {
         if (z_max_ > 1.0 / 2.0 / c_){
             throw std::invalid_argument("the z_max should < 1 / (2 * c)");
         }
@@ -42,6 +42,7 @@ bool Tank3D::is_inside(double x, double y, double z){
     }
     return false;
 }
+
 
 bool Tank3D::is_inside(const Vec3D position){
     double x = position(0, 0);
@@ -200,28 +201,39 @@ void Tank3D::fix_orientations(const Coord3D& positions, Coord3D& orientations, d
         dist_to_base = o_proj.norm();
         dist_to_cap = abs(z_max_ - pos(2));
 
-        if (align_){
-            if (1  - abs(orient.dot(o_proj)) < _EPS) {
-                o_rzt = this->to_rzt(pos_proj);
-                o_target_base << o_rzt(0, 0) * cos(o_rzt(2, 0)),
-                                 o_rzt(0, 0) * sin(o_rzt(2, 0)),
+        if (align_base_){
+            if (1  - orient.dot(o_proj) < _EPS) {
+                o_rzt = this->to_rzt(orient);
+                o_target_base << cos(o_rzt(2, 0)),
+                                 sin(o_rzt(2, 0)),
                                  -2 * c_ * o_rzt(0, 0);
                 o_target_base /= o_target_base.norm();
+                check_nan(o_target_base, "nan during edge case");
             } else {
                 o_target_base << o_proj.cross(orient.cross(o_proj));
-                o_target_cap = gravity.cross(orient.cross(gravity));
-                //o_target_cap << gravity;
+                check_nan(o_target_base, "nan in normal case");
             }
         } else {
             o_target_base << o_proj;
+        }
+
+        if (align_cap_){
+            if (1  - orient.dot(gravity) < _EPS) {
+                o_rzt = this->to_rzt(orient);
+                o_target_cap << o_rzt(0, 0) * cos(o_rzt(2, 0)),
+                                o_rzt(0, 0) * sin(o_rzt(2, 0)),
+                                -1;
+                o_target_cap /= o_target_cap.norm();
+            } else {
+                o_target_cap = gravity.cross(orient.cross(gravity));
+            }
+        } else {
             o_target_cap << gravity;
         }
 
         o_base = get_rotation_matrix(
             orient, o_target_base, kw_ * pow(dist_to_base, -2) * dt
         ) * orient;
-
-        //check_nan(o_base);
 
         o_cap = get_rotation_matrix(
             orient, o_target_cap, kw_ * pow(dist_to_cap, -2) * dt
@@ -233,28 +245,33 @@ void Tank3D::fix_orientations(const Coord3D& positions, Coord3D& orientations, d
     }
 }
 
-
 void Tank3D::fix_positions(Coord3D& positions, double dt){
     size_t n = positions.cols();
-    Vec3D pos, pos_proj;
-    double r2, theta;
-    double r2_max = r_max_ * r_max_;
-
     for (size_t i = 0; i < n; i++){
-        pos << positions.col(i);
-        r2 = pos(0, 0) * pos(0, 0) + pos(1, 0) * pos(1, 0);
-        if (not this->is_inside(pos)){
-            if (pos(2, 0) > z_max_){
-                pos(2, 0) = z_max_;
-                if (r2 > r2_max){
-                    theta = atan2(pos(1, 0), pos(0, 0));
-                    pos(0, 0) = r_max_ * cos(theta);
-                    pos(1, 0) = r_max_ * sin(theta);
-                }
-            } else {
-                pos << this->project_single(pos(0), pos(1), pos(2));
+        if (not this->is_inside(positions.col(i))) {
+            if (positions(2, i) > z_max_){
+                positions(2, i) = z_max_;
             }
-            positions.col(i) = pos;
+            positions.col(i) << this->project_single(
+                positions(0, i), positions(1, i), positions(2, i)
+            );
         }
+    }
+}
+
+
+Gravity::Gravity(double g) : g_(g) {};
+
+void Gravity::fix_orientations(
+        const Coord3D& positions, Coord3D& orientations, double dt
+        ){
+    Vec3D gravity {0, 0, -1};
+    RotMat R;
+    size_t n = positions.cols();
+    for (size_t i = 0; i < n; i++){
+        R = get_rotation_matrix(
+            orientations.col(i), gravity, g_ * dt
+        );
+        orientations.col(i) = R * orientations.col(i);
     }
 }

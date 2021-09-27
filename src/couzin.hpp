@@ -51,6 +51,7 @@ class Couzin3D : public AVS3D {
 
 class CouzinTank3D : public Couzin3D {
     Tank3D tank_;
+    Gravity gravity_;
 
     public:
         CouzinTank3D(
@@ -64,7 +65,9 @@ class CouzinTank3D : public Couzin3D {
             double c,   // shape parameter for tank
             double h,   // height of tank
             double kw,   // strength of wall interaction
-            bool align   // true: align with wall; false: reflect from wall
+            bool align_cap,   // true: align with wall; false: reflect from wall
+            bool align_base,   // true: align with wall; false: reflect from wall
+            double g   // strength of gravith
         );
         void move_in_tank(bool rebuild);
         inline void evolve_in_tank(int steps, bool rebuild){
@@ -73,5 +76,6 @@ class CouzinTank3D : public Couzin3D {
             }
         };
 };
+
 
 #endif

@@ -150,12 +150,15 @@ CouzinTank3D::CouzinTank3D(
             double c,   // shape parameter for tank
             double h,   // height of tank
             double kw,   // strength of wall interaction
-            bool align   // true: align with wall; false: reflect from wall
+            bool align_cap,   // true: align with wall; false: reflect from wall
+            bool align_base,   // true: align with wall; false: reflect from wall
+            double g   // gravity strength
         ) :
     Couzin3D(n, rr, ro, ra, ap, eta, v0, vt, dt),
-    tank_{c, h, kw, align}
+    tank_{c, h, kw, align_cap, align_base}, gravity_{g}
 {
     positions_ = tank_.get_random_positions(n);
+    tank_.fix_orientations(positions_, orientations_, dt_);
 }
 
 
@@ -223,7 +226,10 @@ void CouzinTank3D::move_in_tank(bool rebuild){
         velocities_.col(i) << R * vi_old;
     }
 
+    gravity_.fix_orientations(positions_, velocities_, dt_);
     tank_.fix_orientations(positions_, velocities_, dt_);
 
     positions_ += velocities_ * speed_ * dt_;
+    tank_.fix_positions(positions_, dt_);
 }
+
