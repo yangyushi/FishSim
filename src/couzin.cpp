@@ -149,10 +149,11 @@ CouzinTank3D::CouzinTank3D(
             double dt,  // delta time
             double c,   // shape parameter for tank
             double h,   // height of tank
-            double kw   // strength of wall interaction
+            double kw,   // strength of wall interaction
+            bool align   // true: align with wall; false: reflect from wall
         ) :
     Couzin3D(n, rr, ro, ra, ap, eta, v0, vt, dt),
-    tank_{c, h, kw}
+    tank_{c, h, kw, align}
 {
     positions_ = tank_.get_random_positions(n);
 }

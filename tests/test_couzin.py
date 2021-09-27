@@ -6,7 +6,7 @@ import fish_sim as fs
 
 def test_couzin(repeat=False):
     args = {
-        'n' : 100,
+        'n' : 50,
         'rr' : 1,
         'ro' : 2,
         'ra' : 20,
@@ -14,7 +14,7 @@ def test_couzin(repeat=False):
         'noise':0.1,
         'speed': 3,
         'turn_rate':40 / 180 * np.pi,
-        'dt':0.005
+        'dt':0.1
     }
     system = fs.cmodel.Couzin3D(**args)
     fs.utility.animate(
@@ -26,18 +26,19 @@ def test_couzin(repeat=False):
 
 def test_couzin_tank(repeat=False):
     args = {
-        'n' : 100,
-        'rr' : 10 / 1e3,
+        'n' : 50,
+        'rr' : 20 / 1e3,
         'ro' : 50 / 1e3,
-        'ra' : 80 / 1e3,
+        'ra' : 200 / 1e3,
         'perception' : 90 / 180 * np.pi,
-        'noise':0.5,
+        'noise':0.2,
         'speed': 0.1,
         'turn_rate':40 / 180 * np.pi,
-        'dt':0.005,
+        'dt':0.01,
         'c': 0.743,
-        'h': 1,
-        'kw': 0.0001,
+        'h': 0.5,
+        'kw': 0.1,
+        'align': True,
     }
     system = fs.cmodel.CouzinTank3D(**args)
     fs.utility.animate(

@@ -63,7 +63,8 @@ class CouzinTank3D : public Couzin3D {
             double dt,  // delta time
             double c,   // shape parameter for tank
             double h,   // height of tank
-            double kw   // strength of wall interaction
+            double kw,   // strength of wall interaction
+            bool align   // true: align with wall; false: reflect from wall
         );
         void move_in_tank(bool rebuild);
         inline void evolve_in_tank(int steps, bool rebuild){

@@ -1,8 +1,11 @@
 #include "boundary.hpp"
 
-Tank3D::Tank3D(double c, double z_max, double kw) :
-    c_(c), z_max_(z_max), kw_(kw),
-    r_max_(sqrt(z_max / c)), volume_(M_PI/2/c * z_max*z_max) {
+Tank3D::Tank3D(double c, double z_max, double kw, bool align) :
+    c_(c), z_max_(z_max), kw_(kw), r_max_(sqrt(z_max / c)),
+    volume_(M_PI/2/c * z_max*z_max), align_(align) {
+        if (z_max_ > 1.0 / 2.0 / c_){
+            throw std::invalid_argument("the z_max should < 1 / (2 * c)");
+        }
 }
 
 
@@ -88,20 +91,20 @@ Coord3D Tank3D::project(const Coord3D& xyz){
     );
 
     // different constants for the roots
-    double k0 = pow(2, 1.0 / 3.0);
-    double k3 = 12 * k0 * c_ * c_;
     double r, r0, r1, r2, z, z0, z1, z2, dsq0, dsq1, dsq2, r_proj, z_proj;
-    std::complex<double> k1 = 1.0 + sqrt(3) * 1i;
-    std::complex<double> k2 = 1.0 - sqrt(3) * 1i;
+    double k0 = pow(2, 1.0 / 3.0);
+    double k3 = 12.0 * k0 * c_ * c_;
+    std::complex<double> k1 = 1.0 + sqrt(3.0) * 1i;
+    std::complex<double> k2 = 1.0 - sqrt(3.0) * 1i;
 
-    PropertyComplex _t1 = 2 * c_ * xyz.row(2).array() - 1; // 2cz - 1
-    PropertyComplex _t2 = 864 * pow(c_, 6) * pow(_t1, 3);  // 864 c^6 (2cz - 1)^3
-    PropertyComplex _t3 = 11664 * pow(c_, 8) * rsq;         // 11664 c^8 r^2
-    PropertyComplex _t4 = 108 * pow(c_, 4) * sqrt(rsq);     // 108 c^4 r^2
+    PropertyComplex _t1 = 2.0 * c_ * xyz.row(2).array() - 1.0; // 2cz - 1
+    PropertyComplex _t2 = 864.0 * pow(c_, 6.0) * pow(_t1, 3.0);  // 864 c^6 (2cz - 1)^3
+    PropertyComplex _t3 = 11664.0 * pow(c_, 8.0) * rsq;         // 11664 c^8 r^2
+    PropertyComplex _t4 = 108.0 * pow(c_, 4.0) * sqrt(rsq);     // 108 c^4 r^2
     PropertyComplex _t5 = pow(-_t4 + sqrt(_t3 - _t2), 1.0/3.0);  // (-108 xxx)^(1/3)
     PropertyComplex _t5_inv = 1.0 / _t5;
 
-    Property r_proj_0 = (- k0 * _t1 * _t5_inv - _t5 / (6 * k0 * c_ * c_)).real();
+    Property r_proj_0 = (- k0 * _t1 * _t5_inv - _t5 / (6.0 * k0 * c_ * c_)).real();
     Property r_proj_1 = ((k1 / k0 / k0) * _t1 * _t5_inv +  k2 / k3 * _t5).real();
     Property r_proj_2 = ((k2 / k0 / k0) * _t1 * _t5_inv +  k1 / k3 * _t5).real();
 
@@ -126,11 +129,9 @@ Coord3D Tank3D::project(const Coord3D& xyz){
 }
 
 
-Coord3D Tank3D::project_single(const Vec3D& xyz){
+Vec3D Tank3D::project_single(double x, double y, double z){
     using namespace std::complex_literals;
 
-    double x, y, z;
-    x = xyz(0, 0); y = xyz(1, 0); z = xyz(2, 0);
     double rsq = pow(x, 2) + pow(y, 2);
     double phi = atan2(y, x);
 
@@ -148,6 +149,7 @@ Coord3D Tank3D::project_single(const Vec3D& xyz){
     std::complex<double> _t5 = pow(-_t4 + sqrt(_t3 - _t2), 1.0/3.0);  // (-108 xxx)^(1/3)
     std::complex<double> _t5_inv = 1.0 / _t5;
 
+
     r0 = (- k0 * _t1 * _t5_inv - _t5 / (6 * k0 * c_ * c_)).real();
     r1 = ((k1 / k0 / k0) * _t1 * _t5_inv +  k2 / k3 * _t5).real();
     r2 = ((k2 / k0 / k0) * _t1 * _t5_inv +  k1 / k3 * _t5).real();
@@ -156,7 +158,7 @@ Coord3D Tank3D::project_single(const Vec3D& xyz){
     z1 = c_ * r1 * r1;
     z2 = c_ * r2 * r2;
 
-    Vec3D xyz_proj {3, xyz.cols()};
+    Vec3D xyz_proj {3, 1};
     r = sqrt(rsq);
 
     dsq0 = pow(r - r0, 2) + pow(z - z0, 2);
@@ -171,8 +173,8 @@ Coord3D Tank3D::project_single(const Vec3D& xyz){
     xyz_proj << r_proj * cos(phi), r_proj * sin(phi), z_proj;
 
     return xyz_proj;
-
 }
+
 
 Vec3D Tank3D::to_rzt(const Vec3D& xyz){
     Vec3D rzt {3, 1};
@@ -185,32 +187,54 @@ Vec3D Tank3D::to_rzt(const Vec3D& xyz){
 
 void Tank3D::fix_orientations(const Coord3D& positions, Coord3D& orientations, double dt){
     size_t n = positions.cols();
-    Vec3D pos, orient, o_proj, o_target_cap, o_target_base, o_target;
+    Vec3D pos, pos_proj, orient, o_proj, o_cap, o_base,
+          o_target_cap, o_target_base, o_target, o_rzt;
+    Vec3D gravity {0, 0, -1};
     double dist_to_base, dist_to_cap;
 
     for (size_t i = 0; i < n; i++){
         pos << positions.col(i);
+        pos_proj << this->project_single(pos(0), pos(1), pos(2));
         orient << orientations.col(i);
-        o_proj << pos - this->project_single(pos);
+        o_proj << pos - pos_proj;
         dist_to_base = o_proj.norm();
-        dist_to_cap = abs(z_max_ - pos(2, 0));
+        dist_to_cap = abs(z_max_ - pos(2));
 
-        o_target_base = get_rotation_matrix(
-            orient, o_proj, kw_ * pow(dist_to_base, -2) * dt
+        if (align_){
+            if (1  - abs(orient.dot(o_proj)) < _EPS) {
+                o_rzt = this->to_rzt(pos_proj);
+                o_target_base << o_rzt(0, 0) * cos(o_rzt(2, 0)),
+                                 o_rzt(0, 0) * sin(o_rzt(2, 0)),
+                                 -2 * c_ * o_rzt(0, 0);
+                o_target_base /= o_target_base.norm();
+            } else {
+                o_target_base << o_proj.cross(orient.cross(o_proj));
+                o_target_cap = gravity.cross(orient.cross(gravity));
+                //o_target_cap << gravity;
+            }
+        } else {
+            o_target_base << o_proj;
+            o_target_cap << gravity;
+        }
+
+        o_base = get_rotation_matrix(
+            orient, o_target_base, kw_ * pow(dist_to_base, -2) * dt
         ) * orient;
 
-        o_target_cap = get_rotation_matrix(
-            orient, Vec3D{0, 0, -1}, kw_ * pow(dist_to_cap, -2) * dt
+        //check_nan(o_base);
+
+        o_cap = get_rotation_matrix(
+            orient, o_target_cap, kw_ * pow(dist_to_cap, -2) * dt
         ) * orient;
 
-        o_target = o_target_cap + o_target_base;
+        o_target = o_cap + o_base;
         normalise(o_target);
         orientations.col(i) = o_target;
     }
 }
 
 
-void Tank3D::fix_positions(Coord3D& positions){
+void Tank3D::fix_positions(Coord3D& positions, double dt){
     size_t n = positions.cols();
     Vec3D pos, pos_proj;
     double r2, theta;
@@ -228,7 +252,7 @@ void Tank3D::fix_positions(Coord3D& positions){
                     pos(1, 0) = r_max_ * sin(theta);
                 }
             } else {
-                pos << this->project_single(pos);
+                pos << this->project_single(pos(0), pos(1), pos(2));
             }
             positions.col(i) = pos;
         }

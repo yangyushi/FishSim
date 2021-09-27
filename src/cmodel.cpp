@@ -1289,7 +1289,7 @@ PYBIND11_MODULE(cmodel, m){
             py::init<
                 int, double, double, double,
                 double, double, double, double, double,
-                double, double, double
+                double, double, double, bool
             >(),
             pybind11::arg("n"),
             pybind11::arg("rr"),
@@ -1302,7 +1302,8 @@ PYBIND11_MODULE(cmodel, m){
             pybind11::arg("dt"),
             pybind11::arg("c"),
             pybind11::arg("h"),
-            pybind11::arg("kw")
+            pybind11::arg("kw"),
+            pybind11::arg("align")
         )
         .def("move", &CouzinTank3D::move_in_tank, py::arg("rebuild")=true)
         .def("evolve", &CouzinTank3D::evolve_in_tank, py::arg("steps"), py::arg("rebuild")=true)
@@ -1323,10 +1324,11 @@ PYBIND11_MODULE(cmodel, m){
 
     py::class_<Tank3D>(m, "Tank3D")
         .def(
-            py::init< double, double, double >(),
+            py::init< double, double, double, bool >(),
             pybind11::arg("c"),
             pybind11::arg("z_max"),
-            pybind11::arg("kw")  // strength of wall interaction
+            pybind11::arg("kw"),  // strength of wall interaction
+            pybind11::arg("align")  // strength of wall interaction
         )
         .def(
             "get_random_positions", &Tank3D::get_random_positions,
@@ -1360,5 +1362,20 @@ PYBIND11_MODULE(cmodel, m){
                numpy.ndarray: the points projected on the bottom of the bowl.
             )---",
             py::arg("xyz")
+        )
+        .def(
+            "project_single", &Tank3D::project_single,
+            R"---(
+            Generate random points inside the boundary.
+
+            Args:
+                x (float): the x coordinate
+                y (float): the y coordinate
+                z (float): the z coordinate
+
+            Return:
+               numpy.ndarray: the points projected on the bottom of the bowl.
+            )---",
+            py::arg("x"), py::arg("y"), py::arg("z")
         );
 }

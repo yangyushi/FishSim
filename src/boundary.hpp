@@ -23,14 +23,15 @@ struct Tank3D : public Boundary {
     Coord3D get_random_positions_reject(size_t n);
     // for all 3D points, calculate the cloest point on the bottom of the bowl
     Coord3D project(const Coord3D& xyz);
-    Coord3D project_single(const Vec3D& xyz);
+    Vec3D project_single(double x, double y, double z);
 
     // convert xyz coordinate system to r-z-theta coordinates
     Vec3D to_rzt(const Vec3D& xyz);
 
     const double c_, z_max_, kw_, r_max_, volume_;
+    const bool align_;
 
-    Tank3D(double c, double z_max, double kw);
+    Tank3D(double c, double z_max, double kw, bool align);
 
     bool is_inside(double x, double y, double z) ;
     bool is_inside(Vec3D position) ;
