@@ -2,9 +2,9 @@
 #include <chrono>
 
 int main(){
-    int n = 50;
-    int total_steps = 1000;
-    int jump = 1;
+    int n = 100;
+    int total_steps = 10000;
+    int jump = 100;
     float theta = 3.141592653 / 180 * 40;
     float perception = 270.0 / 360.0 * 3.1415;
 
@@ -15,7 +15,7 @@ int main(){
         0.05,  // eta
         3.0, // v0
         theta, // turning rate
-        0.1 // dt
+        0.01 // dt
     };
 
     system.positions_ *= 1;
@@ -49,5 +49,14 @@ int main(){
     std::cout << "Time spent with neighbour list: "
          << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()
          << "[ms]" << std::endl;
+    for (int step=0; step < total_steps; step++){
+        system.move(true);
+        if (step % jump == 0) {
+            std::cout << "mill: " << system.get_mill()
+                      << "; polarisation: " << system.get_polarisation()
+                      << std::endl;
+        }
+    }
+
     return 0;
 }

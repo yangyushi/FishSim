@@ -1271,6 +1271,7 @@ PYBIND11_MODULE(cmodel, m){
         .def("move", &Couzin3D::move, py::arg("rebuild")=true)
         .def("evolve", &Couzin3D::evolve, py::arg("steps"), py::arg("rebuild")=true)
         .def("get_polarisation", &Couzin3D::get_polarisation)
+        .def("get_mill", &Couzin3D::get_mill)
         .def("get_velocities", &Couzin3D::get_velocities)
         .def("get_positions", &Couzin3D::get_positions)
         .def("load_velocities", &Couzin3D::load_velocities)

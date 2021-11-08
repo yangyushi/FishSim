@@ -1,12 +1,12 @@
 prefix = /usr/local
 CC = clang++
-CPPFLAGS = -Wall -O3 -std=c++11 -I.. -I. -I$(prefix)/include -fPIC\
+CPPFLAGS = -Wall -O3 -std=c++14 -I.. -I. -I$(prefix)/include -fPIC\
 		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include -I$(prefix)/include/eigen3 
 LINKFLAGS = -lomp
 
 
 couzin: test_couzin.cpp couzin.o neighbour_list.o core.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_couzin.cpp couzin.o neighbour_list.o core.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_couzin.cpp couzin.o neighbour_list.o core.o boundary.o
 	rm -f test_couzin.xyz
 	./a.out
 	rm a.out
@@ -22,8 +22,12 @@ network: test_network.cpp vicsek.o neighbour_list.o network.o core.o
 	./a.out
 	rm a.out
 
-couzin.o: couzin.cpp
+
+couzin.o: couzin.cpp boundary.o
 	$(CC) $(CPPFLAGS) -c couzin.cpp -o couzin.o
+
+boundary.o: boundary.cpp
+	$(CC) $(CPPFLAGS) -c boundary.cpp -o boundary.o
 
 network.o: network.cpp
 	$(CC) $(CPPFLAGS) -c network.cpp -o network.o

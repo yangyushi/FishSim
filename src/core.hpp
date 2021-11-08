@@ -254,6 +254,22 @@ void vicsek_align(T& orientations, const Conn& connections){
 }
 
 
+template<class T>
+double get_mill_order(const T& orientations, const T& positions){
+    Vec3D rot {0, 0, 0};
+    Vec3D r, v, m;
+    Vec3D group_centre = positions.rowwise().mean();
+    size_t n = orientations.cols();
+    for (size_t i = 0; i < n; i++){
+        r << positions.col(i).array() - group_centre.array();
+        v << orientations.col(i).array();
+        r = r / r.norm();
+        m << v.cross(r);
+        rot += m;
+    }
+    return rot.norm() / (float) n;
+}
+
 void voter_align(Spins& spins, Property& states, const Conn& connections);
 
 

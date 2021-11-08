@@ -46,6 +46,9 @@ class Couzin3D : public AVS3D {
         void load_positions(Coord3D);
         inline Coord3D& get_velocities() { return velocities_; };
         inline void load_velocities(Coord3D v) { velocities_ = v ;};
+        inline double get_mill(){
+            return get_mill_order(orientations_, positions_);
+        }
 };
 
 
