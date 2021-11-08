@@ -1021,6 +1021,35 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         );
 
+    py::class_<AVS3D>(m, "AVS3D")
+        .def(
+            py::init< int, double >(),
+            pybind11::arg("n"),
+            pybind11::arg("eta")
+        )
+        .def("move", &AVS3D::add_noise)
+        .def("get_polarisation", &AVS3D::get_polarisation)
+        .def_readonly("dim", &AVS3D::dim_)
+        .def_property("orientations",
+                &AVS3D::get_orientations, &AVS3D::load_orientations,
+                py::return_value_policy::copy
+        );
+
+    py::class_<AVS2D>(m, "AVS2D")
+        .def(
+            py::init< int, double >(),
+            pybind11::arg("n"),
+            pybind11::arg("eta")
+        )
+        .def("move", &AVS2D::add_noise)
+        .def("get_polarisation", &AVS2D::get_polarisation)
+        .def_readonly("dim", &AVS2D::dim_)
+        .def_property("orientations",
+                &AVS2D::get_orientations, &AVS2D::load_orientations,
+                py::return_value_policy::copy
+        );
+
+
     py::class_<Vicsek3DPBC>(m, "Vicsek3DPBC")
         .def(
             py::init<
