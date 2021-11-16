@@ -44,7 +44,7 @@ bool Tank3D::is_inside(double x, double y, double z){
 }
 
 
-bool Tank3D::is_inside(const Vec3D position){
+bool Tank3D::is_inside(const Vec3D& position){
     double x = position(0, 0);
     double y = position(1, 0);
     double z = position(2, 0);
@@ -60,6 +60,9 @@ bool Tank3D::is_inside(const Vec3D position){
     return false;
 }
 
+bool Tank3D::is_inside_single(const Vec3D& position){
+    return this->is_inside(position);
+}
 
 Coord3D Tank3D::get_random_positions_reject(size_t n){
     Coord3D result{3, n};

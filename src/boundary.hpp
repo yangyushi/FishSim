@@ -24,7 +24,8 @@ struct Tank3D{
     Vec3D to_rzt(const Vec3D& xyz);
 
     bool is_inside(double x, double y, double z) ;
-    bool is_inside(Vec3D position) ;
+    bool is_inside(const Vec3D& position) ;
+    bool is_inside_single(const Vec3D& position) ;
 
     Tank3D(double c, double z_max);
 

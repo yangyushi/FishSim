@@ -1394,6 +1394,19 @@ PYBIND11_MODULE(cmodel, m){
             py::arg("xyz")
         )
         .def(
+            "is_inside", &Tank3D::is_inside_single,
+            R"---(
+            Check if a point is inside the tank.
+
+            Args:
+                xyz (numpy.ndarray): the coordinates, shape (3,).
+
+            Return:
+               bool: if True the particle is in the tank
+            )---",
+            py::arg("xyz")
+        )
+        .def(
             "project_single", &Tank3D::project_single,
             R"---(
             Generate random points inside the boundary.
