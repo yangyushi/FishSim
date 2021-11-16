@@ -1356,12 +1356,9 @@ PYBIND11_MODULE(cmodel, m){
 
     py::class_<Tank3D>(m, "Tank3D")
         .def(
-            py::init< double, double, double, bool, bool >(),
+            py::init< double, double >(),
             pybind11::arg("c"),
-            pybind11::arg("z_max"),
-            pybind11::arg("kw"),  // strength of wall interaction
-            pybind11::arg("align_cap"),  // strength of wall interaction
-            pybind11::arg("align_base")  // strength of wall interaction
+            pybind11::arg("z_max")
         )
         .def(
             "get_random_positions", &Tank3D::get_random_positions,

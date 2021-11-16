@@ -53,7 +53,7 @@ class Couzin3D : public AVS3D {
 
 
 class CouzinTank3D : public Couzin3D {
-    Tank3D tank_;
+    BoundaryTank3D tank_;
     Gravity gravity_;
 
     public:

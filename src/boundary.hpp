@@ -12,12 +12,7 @@ struct Boundary{
     virtual ~Boundary(){};
 };
 
-
-/*
- * z = c * r^2
- * r = sqrt(z / c)
- */
-struct Tank3D : public Boundary {
+struct Tank3D{
     // generate uniform random points inside the boundary 
     Coord3D get_random_positions(size_t n);
     Coord3D get_random_positions_reject(size_t n);
@@ -28,13 +23,25 @@ struct Tank3D : public Boundary {
     // convert xyz coordinate system to r-z-theta coordinates
     Vec3D to_rzt(const Vec3D& xyz);
 
-    const double c_, z_max_, kw_, r_max_, volume_;
-    const bool align_cap_, align_base_;
-
-    Tank3D(double c, double z_max, double kw, bool align_cap, bool align_base);
-
     bool is_inside(double x, double y, double z) ;
     bool is_inside(Vec3D position) ;
+
+    Tank3D(double c, double z_max);
+
+    const double c_, z_max_, r_max_, volume_;
+};
+
+
+/*
+ * z = c * r^2
+ * r = sqrt(z / c)
+ */
+struct BoundaryTank3D : public Boundary, public Tank3D {
+    const double kw_; 
+    const bool align_cap_, align_base_;
+
+    BoundaryTank3D(double c, double z_max, double kw, bool align_cap, bool align_base);
+
     void fix_orientations(
         const Coord3D& positions, Coord3D& orientations, double dt
     );

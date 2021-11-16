@@ -1,8 +1,8 @@
 #include "boundary.hpp"
 
-Tank3D::Tank3D(double c, double z_max, double kw, bool align_cap, bool align_base) :
-    c_(c), z_max_(z_max), kw_(kw), r_max_(sqrt(z_max / c)),
-    volume_(M_PI/2/c * z_max*z_max), align_cap_(align_cap), align_base_(align_base) {
+Tank3D::Tank3D(double c, double z_max) :
+    c_(c), z_max_(z_max), r_max_(sqrt(z_max / c)),
+    volume_(M_PI/2/c * z_max*z_max) {
         if (z_max_ > 1.0 / 2.0 / c_){
             throw std::invalid_argument("the z_max should < 1 / (2 * c)");
         }
@@ -186,7 +186,14 @@ Vec3D Tank3D::to_rzt(const Vec3D& xyz){
 }
 
 
-void Tank3D::fix_orientations(const Coord3D& positions, Coord3D& orientations, double dt){
+BoundaryTank3D::BoundaryTank3D(
+        double c, double z_max, double kw, bool align_cap, bool align_base
+    ) : Tank3D{c, z_max}, kw_{kw}, align_cap_{align_cap}, align_base_{align_base}
+    {
+}
+
+
+void BoundaryTank3D::fix_orientations(const Coord3D& positions, Coord3D& orientations, double dt){
     size_t n = positions.cols();
     Vec3D pos, pos_proj, orient, o_proj, o_cap, o_base,
           o_target_cap, o_target_base, o_target, o_rzt;
@@ -245,7 +252,7 @@ void Tank3D::fix_orientations(const Coord3D& positions, Coord3D& orientations, d
     }
 }
 
-void Tank3D::fix_positions(Coord3D& positions, double dt){
+void BoundaryTank3D::fix_positions(Coord3D& positions, double dt){
     size_t n = positions.cols();
     for (size_t i = 0; i < n; i++){
         if (not this->is_inside(positions.col(i))) {
