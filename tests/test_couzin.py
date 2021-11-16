@@ -39,7 +39,7 @@ def test_couzin_tank(repeat=False):
         'h': 0.5,
         'kw': 0.01,
         'align_cap': False,
-        'align_base': True,
+        'align_base': False,
         'g': 1,
     }
     system = fs.cmodel.CouzinTank3D(**args)
@@ -52,5 +52,5 @@ def test_couzin_tank(repeat=False):
 
 
 if __name__ == "__main__":
-    test_couzin_tank(repeat=True)
     test_couzin(repeat=True)
+    test_couzin_tank(repeat=True)
