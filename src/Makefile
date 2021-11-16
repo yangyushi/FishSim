@@ -4,6 +4,12 @@ CPPFLAGS = -Wall -O3 -std=c++14 -I.. -I. -I$(prefix)/include -fPIC\
 		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include -I$(prefix)/include/eigen3 
 LINKFLAGS = -lomp
 
+couzin_tank: test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o
+	rm -f test_couzin_tank.xyz
+	./a.out
+	rm a.out
+
 
 couzin: test_couzin.cpp couzin.o neighbour_list.o core.o
 	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_couzin.cpp couzin.o neighbour_list.o core.o boundary.o
