@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 import networkx as nx
 from itertools import product
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.special import gamma as gamma_func
@@ -179,7 +180,7 @@ def animate(
 def animate_active_2d(
         system, r=100, jump=100, box=None,
         save='', fps=60, show=True, frames=100,
-        repeat=False, title=''
+        repeat=False, title='', arrow=True,
 ):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     ax = fig.add_subplot()
@@ -199,29 +200,38 @@ def animate_active_2d(
     if system.dim != 2:
         return NotImplementedError("Only 2D system is Supported")
 
-    def update(num, system, scatter):
+    def update(num, scatter, system):
         for _ in range(jump):
             system.move()
-        scatter.set_data(system.positions)
-        quiver.set_offsets(system.positions.T)
-        quiver.set_UVC(
-            np.cos(system.phi),
-            np.sin(system.phi),
-        )
+
+        scatter.set_offsets(system.positions.T)
+        theta = system.phi / np.pi / 2 + 0.5
+        color = cm.twilight(theta)
+        scatter.set_facecolor(color)
+        if arrow:
+            quiver.set_offsets(system.positions.T)
+            quiver.set_UVC(
+                np.cos(system.phi),
+                np.sin(system.phi),
+            )
         if (num == frames - 1) and (not repeat):
             raise StopIteration
-        return scatter
+        return scatter,
 
-    scatter = ax.plot(
-        *system.positions, color='teal', mfc='w', ls='None', marker='o',
-        markersize=r
-    )[0]
-    quiver = ax.quiver(
-        *system.positions, np.cos(system.phi), np.sin(system.phi),
-        pivot='mid', units='width', color='teal', zorder=5, scale=250/r,
+    theta = system.phi / np.pi / 2 + 0.5
+    print(theta.mean(), theta.min(), theta.max())
+    color = cm.twilight(theta)
+    scatter = ax.scatter(
+        *system.positions, marker='o',
+        s=r, color=color, ec='gray', vmin=0, vmax=1, lw=0.5
     )
+    if arrow:
+        quiver = ax.quiver(
+            *system.positions, np.cos(system.phi), np.sin(system.phi),
+            pivot='mid', units='width', color='k', zorder=5, scale=6000/r,
+        )
     ani = FuncAnimationDisposable(
-        fig, update, frames=frames, fargs=(system, scatter), interval=1,
+        fig, update, frames=frames, fargs=(scatter, system), interval=1,
         blit=False, repeat=repeat
     )
     if show:
@@ -358,7 +368,7 @@ class DumpXYZ(Observer):
         Append many frames to an xyz file
         """
         if self.active:
-            configuration = np.concatenate((system.r, system.v), axis=1)
+            configuration = np.concatenate((system.positions, system.velocities), axis=0).T
             np.savetxt(
                 self.f, configuration, delimiter='\t',
                 fmt=['A\t%.8e'] + ['%.8e' for i in range(2 * system.dim - 1)],
@@ -388,8 +398,8 @@ class DumpModel(Observer):
 
     def aggregate(self, system):
         if self.active and self.not_dumped:
-            self.positions.append(system.r)
-            self.velocities.append(system.v)
+            self.positions.append(system.positions)
+            self.velocities.append(system.velocities)
 
     def stop(self):
         self.active = False
