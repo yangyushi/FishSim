@@ -197,7 +197,8 @@ def Boundary(condition):
                 p = np.random.randn(self.dim, self.n)  # positions
                 r = np.linalg.norm(p, axis=0)  # radii
                 l = np.random.uniform(0, self.R**self.dim, self.n) ** (1 / self.dim)
-                self.positions = p / r * l  # uniform inside n-sphere
+                if not kwargs.get('no_random_pos'):
+                    self.positions = p / r * l  # uniform inside n-sphere
                 self.get_force()
 
             def fix_boundary(self):
@@ -220,16 +221,18 @@ def Boundary(condition):
                 should_fix = np.abs(angles) < np.pi/2  # n
                 if not np.any(should_fix):
                     return
+
                 if self.dim == 2:
                     r_angle = np.arctan2(r_orient[1], r_orient[0])  # n,
                     v_orient[0, should_fix] = np.cos(
-                        r_angle[:, should_fix] - signs[:, should_fix] * np.pi/2
-                    ) * v_mag[should_fix]
+                        r_angle[should_fix] - signs[should_fix] * np.pi/2
+                    )
                     v_orient[1, should_fix] = np.sin(
-                        r_angle[:, should_fix] - signs[:, should_fix] * np.pi/2
-                    ) * v_mag[should_fix]
-                    self.velocities[:, is_outside] = v_orient
+                        r_angle[should_fix] - signs[should_fix] * np.pi/2
+                    )
+                    self.velocities[:, is_outside] = v_orient  * v_mag
                     self.phi[is_outside] = np.arctan2(v_orient[1], v_orient[0])
+
                 elif self.dim == 3:
                     e_align = np.cross(
                         r_orient[:, should_fix].T,
@@ -605,6 +608,56 @@ class Vicsek3D(BD):
         self.o[1] = e_xy * np.sin(azi)
         self.o[0] = e_xy * np.cos(azi)
         self.velocities = self.o * self.v0
+
+        self.fix_boundary()
+        self.notify()
+
+    def move_overdamp(self): self.move()
+
+
+class Vicsek2D(BD):
+    """
+    Vicsek Model Simulation in 2D
+    """
+    def __init__(self, n, r, eta, v0, alpha=0, **kwargs):
+        if 'm' not in kwargs:
+            kwargs['m'] = 1
+        kwargs.update({'D': 1, 'kT': 1})  # meaningless in Vicsek Model
+        BD.__init__(self, n, dim=2, dt=1, **kwargs)
+        self.v0 = v0  # speed
+        self.r0 = r   # interaction range
+        self.eta = eta
+        self.positions = np.random.randn(self.dim, self.n)
+        self.o = np.random.randn(self.dim, self.n)  # orientation
+        self.o = self.o / np.linalg.norm(self.o, axis=0)[np.newaxis, :]
+        self.velocities = self.o * self.v0
+        self.phi = np.arctan2(self.o[1], self.o[0])
+        self.alpha = alpha
+
+    def move(self):
+        self.get_force()
+        # active
+        old_velocity = self.velocities.copy()
+        self.positions += self.velocities * self.dt
+
+        rij = self.get_pair_shift()
+        dij = np.linalg.norm(rij, axis=0)  # distances, shape (N, N)
+        aij = dij < self.r0  # adjacency matrix (N, N)
+        nni = np.sum(aij, axis=0)  # number of neighbours for each particle
+
+        vii = self.velocities[:, np.newaxis, :] * np.ones((2, self.n, 1))  # (2, N, N)
+        v_mean = np.sum(vii * aij[np.newaxis, :, :], axis=2) / nni  # (2, N)
+        theta = np.arctan2(v_mean[1], v_mean[0]) # (N,)
+        noise = np.random.uniform(-self.eta * np.pi, self.eta * np.pi, self.n)
+        theta = theta + noise
+        self.o[0] = np.cos(theta)
+        self.o[1] = np.sin(theta)
+        velocities = self.o * self.v0
+        self.velocities = old_velocity * self.alpha + (1-self.alpha) * velocities
+        self.velocities += self.dt * self.f / self.m  # b propagator
+        self.o = self.velocities / np.linalg.norm(self.velocities, axis=0)[None, :]
+        self.velocities = self.o * self.v0
+        self.phi = np.arctan2(*self.o)
 
         self.fix_boundary()
         self.notify()
