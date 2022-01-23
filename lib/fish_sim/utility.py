@@ -1,20 +1,18 @@
 import pickle
 import numpy as np
 import networkx as nx
-from itertools import product
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from scipy.special import gamma as gamma_func
-from scipy.spatial.distance import pdist, cdist, squareform
 
-from .noise_3d import add_vicsek_noise_3d
-from .force import force_lj, force_wca
 
 def _quiver_data_to_segments(X, Y, Z, u, v, w, length=1):
     segments = (X, Y, Z, X+v*length, Y+u*length, Z+w*length)
-    segments = np.array(segments).reshape(6,-1)
-    return [[[x, y, z], [u, v, w]] for x, y, z, u, v, w in zip(*list(segments))]
+    segments = np.array(segments).reshape(6, -1)
+    return [
+        [[x, y, z], [u, v, w]] for x, y, z, u, v, w in zip(*list(segments))
+    ]
+
 
 class FuncAnimationDisposable(animation.FuncAnimation):
     def __init__(self, fig, func, **kwargs):
@@ -81,11 +79,11 @@ def plot_phase(
     else:
         return NotImplementedError("Only 2D and 3D systems are Supported")
 
-    scatter = ax.plot(
+    ax.plot(
         *system.positions, color='teal', mfc='w', ls='None', marker='o',
         markersize=r
     )[0]
-    quiver = ax.quiver(
+    ax.quiver(
         *system.positions, *system.velocities, length=length, color='teal'
     )
     if title:
@@ -148,7 +146,9 @@ def animate(
         if system.dim == 3:
             scatter.set_data(system.positions[:2])
             scatter.set_3d_properties(system.positions[2])
-            seg = _quiver_data_to_segments(*system.positions, *system.velocities, length=arrow)
+            seg = _quiver_data_to_segments(
+                *system.positions, *system.velocities, length=arrow
+            )
             quiver.set_segments(seg)
         else:
             scatter.set_data(system.positions)
@@ -219,7 +219,6 @@ def animate_active_2d(
         return scatter,
 
     theta = system.phi / np.pi / 2 + 0.5
-    print(theta.mean(), theta.min(), theta.max())
     color = cm.twilight(theta)
     scatter = ax.scatter(
         *system.positions, marker='o',
@@ -228,7 +227,7 @@ def animate_active_2d(
     if arrow:
         quiver = ax.quiver(
             *system.positions, np.cos(system.phi), np.sin(system.phi),
-            pivot='mid', units='width', color='k', zorder=5, scale=6000/r,
+            pivot='mid', units='width', color='k', zorder=5, scale=9000/r,
         )
     ani = FuncAnimationDisposable(
         fig, update, frames=frames, fargs=(scatter, system), interval=1,
@@ -305,10 +304,12 @@ class Thermodynamic(Observer):
     def aggregate(self, system):
         e_kin = np.mean(system.interest['kinetic']) / system.n
         e_tot = e_kin + np.mean(system.interest['potential']) / system.n
-        press = system.kT * system.density + np.mean(system.interest['virial']) / system.volume
+        press = system.kT * system.density
+        press += np.mean(system.interest['virial']) / system.volume
         t_kin = 2 * e_kin / system.dim
         t_con = np.mean(
-            np.array(system.interest['force_sq']) / np.array(system.interest['laplacian'])
+            np.array(system.interest['force_sq']) /
+            np.array(system.interest['laplacian'])
         )
         self.result['E/N'].append(e_tot)
         self.result['P'].append(press)
@@ -322,12 +323,14 @@ class Thermodynamic(Observer):
 class Dynamic(Observer):
     def __init__(self, block, report=True):
         Observer.__init__(self, block)
-        self.names = ['polarisation']
+        self.names = ['polarisation', 'rotation']
         self.result_frames = {
             'polarisation': np.empty(block),
+            'rotation': np.empty(block),
         }
         self.result = {
-            'polarisation':[],
+            'polarisation': [],
+            'rotation': [],
         }
         self.report = report
         if self.report:
@@ -343,9 +346,16 @@ class Dynamic(Observer):
             ]))
 
     def collect(self, system):
-        orient = system.velocities / np.linalg.norm(system.velocities, axis=0)[np.newaxis, :]
+        speed = np.linalg.norm(system.velocities, axis=0)
+        orient = system.velocities / speed[np.newaxis, :]
         pol = np.linalg.norm(np.mean(orient, axis=1))
         self.result_frames['polarisation'] = pol
+
+        group_centre = system.positions.mean(axis=1)
+        r = system.positions - group_centre[:, np.newaxis]
+        r = r / np.linalg.norm(r, axis=0)[np.newaxis, :]
+        rotation = np.cross(orient.T, r.T)
+        self.result_frames['rotation'] = np.abs(rotation.mean())
 
 
 class DumpXYZ(Observer):
@@ -368,7 +378,9 @@ class DumpXYZ(Observer):
         Append many frames to an xyz file
         """
         if self.active:
-            configuration = np.concatenate((system.positions, system.velocities), axis=0).T
+            configuration = np.concatenate(
+                (system.positions, system.velocities), axis=0
+            ).T
             np.savetxt(
                 self.f, configuration, delimiter='\t',
                 fmt=['A\t%.8e'] + ['%.8e' for i in range(2 * system.dim - 1)],
