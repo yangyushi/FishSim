@@ -1101,6 +1101,12 @@ PYBIND11_MODULE(cmodel, m){
             py::arg("rebuild")=true
         )
         .def(
+            "move_no_nl", &Vicsek3DPBCInertia::move_no_nl,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+            )---"
+        )
+       .def(
             "evolve", &Vicsek3DPBCInertia::evolve,
             R"---(
             Advance the dynamic, move multiple Monte-Carlo steps
@@ -1140,6 +1146,63 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         )
         .def_readonly("dim", &Vicsek3DPBCInertia::dim_);
+
+    py::class_<Vicsek2DPBCInertia>(m, "Vicsek2DPBCInertia")
+        .def(
+            py::init<
+                int, double, double, double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("r"),
+            pybind11::arg("eta"),
+            pybind11::arg("box"),
+            pybind11::arg("v0"),
+            pybind11::arg("alpha")
+        )
+        .def(
+            "move", &Vicsek2DPBCInertia::move,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+
+            Args:
+                rebuild (bool): if true, the neighobur will be\
+                    used to accelerate the calculation.
+            )---",
+            py::arg("rebuild")=true
+        )
+        .def(
+            "move_no_nl", &Vicsek2DPBCInertia::move_no_nl,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+            )---"
+        )
+        .def(
+            "get_polarisation", &Vicsek2DPBCInertia::get_polarisation,
+            "Calculate the polarisation of current state of the system",
+            py::return_value_policy::copy
+        )
+        .def(
+            "get_velocities", &Vicsek2DPBCInertia::get_velocities,
+            "Retrieve the current velocities as numpy array of the system"
+        )
+        .def(
+            "get_positions", &Vicsek2DPBCInertia::get_positions,
+            "Retrieve the current positions as numpy array of the system"
+        )
+        .def(
+            "load_velocities", &Vicsek2DPBCInertia::load_velocities,
+            "Set the current velocities of the system",
+            py::arg("velocities")
+        )
+        .def_property("positions",
+            &Vicsek2DPBCInertia::get_positions, &Vicsek2DPBCInertia::load_positions,
+            py::return_value_policy::copy
+        )
+        .def_property("velocities",
+            &Vicsek2DPBCInertia::get_velocities, &Vicsek2DPBCInertia::load_velocities,
+            py::return_value_policy::copy
+        )
+        .def_readonly("dim", &Vicsek2DPBCInertia::dim_);
 
     py::class_<Network3D>(m, "Network3D")
         .def(

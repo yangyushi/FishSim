@@ -109,6 +109,41 @@ void Vicsek3DPBCInertia::move_no_nl(){
 }
 
 
+Vicsek2DPBCInertia::Vicsek2DPBCInertia(
+    int n, double r, double eta, double box, double v0, double alpha
+    ) : Vicsek2DPBC{n, r, eta, box, v0}, old_orientations_{2, n}, alpha_{alpha}
+    {}
+
+
+void Vicsek2DPBCInertia::move(bool rebuild){
+    if (rebuild){
+        cell_list_.build(positions_);
+    }
+    connections_ = cell_list_.get_conn(positions_);
+    old_orientations_ << orientations_;
+    vicsek_align(orientations_, connections_);
+    this->add_noise();
+    orientations_ = (old_orientations_ * alpha_ + orientations_ * (1 - alpha_));
+    normalise(orientations_);
+    this->update_velocity();
+    positions_ += velocities_;
+    fix_positions();
+}
+
+
+void Vicsek2DPBCInertia::move_no_nl(){
+    connections_ = get_connections_pbc(positions_, rc_, box_);
+    old_orientations_ << orientations_;
+    vicsek_align(orientations_, connections_);
+    add_noise();
+    orientations_ = (old_orientations_ * alpha_ + orientations_ * (1 - alpha_));
+    normalise(orientations_);
+    this->update_velocity();
+    positions_ += velocities_;
+    fix_positions();
+}
+
+
 Vicsek3DPBCInertiaAF::Vicsek3DPBCInertiaAF(
     int n, double r, double eta, double box, double v0, double alpha
     ) : Vicsek3DPBCInertia{n, r, eta, box, v0, alpha} {}

@@ -129,6 +129,18 @@ class Vicsek2DPBC : public Vicsek2D{
 };
 
 
+class Vicsek2DPBCInertia : public Vicsek2DPBC{
+    public:
+        Coord2D old_orientations_;
+        double alpha_;
+        Vicsek2DPBCInertia(
+            int n, double r, double eta, double box, double v0, double alpha
+        );
+        void move(bool rebuild);
+        void move_no_nl();  // without neighbour list
+};
+
+
 class Vicsek2DPBCVN : public Vicsek2DPBC{
     public:
         Vicsek2DPBCVN(int n, double r, double eta, double box, double v0);
