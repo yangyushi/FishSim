@@ -170,7 +170,7 @@ Conn get_connections_pbc(T& positions, double rc, double box){
     for (int i=0; i<positions.cols(); i++){
         connections.push_back(std::vector<int>{});
     }
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int i=0; i<positions.cols(); i++){
         for (int j=0; j<positions.cols(); j++){
             double dist_nd_2 = 0;
