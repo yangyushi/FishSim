@@ -102,6 +102,7 @@ void Vicsek3DPBCInertia::move_no_nl(){
     vicsek_align(orientations_, connections_);
     add_noise();
     orientations_ = (old_orientations_ * alpha_ + orientations_ * (1 - alpha_));
+    normalise(orientations_);
     this->update_velocity();
     positions_ += velocities_;
     fix_positions();
