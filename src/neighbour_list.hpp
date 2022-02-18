@@ -262,7 +262,7 @@ std::vector<Conn> VerletList<T>::get_neighbour_conn_slow(
     size_t conn_num = r_bins.size() - 1;
     std::vector<Conn> conn_list;
     std::vector<double> r2_bins;
-    for (int i = 0; i < conn_num; i++){
+    for (size_t i = 0; i < conn_num; i++){
         conn_list.push_back(get_blank_connections());
         r2_bins.push_back(r_bins[i] * r_bins[i]);
     }
@@ -276,7 +276,7 @@ std::vector<Conn> VerletList<T>::get_neighbour_conn_slow(
                 continue;
             }
             dist2 = (positions.col(i) - positions.col(j)).array().pow(2).sum();
-            for (int k=0; k < conn_num; k++){ 
+            for (size_t k=0; k < conn_num; k++){ 
                 if ((dist2 > r2_bins[k]) and (dist2 <= r2_bins[k+1])){
                     conn_list[k][i].push_back(j);
                     break;

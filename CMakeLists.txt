@@ -1,10 +1,11 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 
 # set the project name
 project(
     cfish_sim VERSION 0.0
     DESCRIPTION "simulate the collective behaviour of fish as active matter"
 )
+find_package(Python COMPONENTS Interpreter Development)
 
 find_package(OpenMP)
 add_subdirectory(extern/pybind11)

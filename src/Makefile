@@ -1,7 +1,7 @@
 prefix = /usr/local
 CC = clang++
 CPPFLAGS = -Wall -O3 -std=c++14 -I.. -I. -I$(prefix)/include -fPIC\
-		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include -I$(prefix)/include/eigen3 
+		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include -I../extern/eigen3
 LINKFLAGS = -lomp
 
 couzin_tank: test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o

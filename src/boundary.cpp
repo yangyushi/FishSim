@@ -113,7 +113,7 @@ Coord3D Tank3D::project(const Coord3D& xyz){
     Property r_proj_2 = ((k2 / k0 / k0) * _t1 * _t5_inv +  k1 / k3 * _t5).real();
 
     Coord3D xyz_proj {3, xyz.cols()};
-    for (size_t idx = 0; idx < xyz.cols(); idx++){
+    for (size_t idx = 0; idx < (size_t) xyz.cols(); idx++){
         r = sqrt(rsq(idx)); z = xyz(2, idx);
         r0 = r_proj_0(idx); z0 = c_ * r0 * r0;
         r1 = r_proj_1(idx); z1 = c_ * r1 * r1;

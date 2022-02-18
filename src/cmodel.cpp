@@ -142,6 +142,28 @@ const char* docstring_vicsek_3d_pbc_inertia =\
     ;
 
 
+const char* docstring_vicsek_2d_pbc_inertia =\
+    "2D Vicsek simulation in PBC with a inertia term\n"\
+    " \n\n\n"\
+    "Args:\n\n"\
+    "   n (:obj:`int`): number of particles in the system\n"\
+    "   box (:obj:`float`): the size of the cubic box\n"\
+    "   eta (:obj:`float`): the magnitude of noise, from 0 to 1\n"\
+    "   v0 (:obj:`float`): the speed in the simulation\n"\
+    "   r (:obj:`float`): the interaction range\n"\
+    "   alpha (:obj:`float`): larger alpha corresponds to larger mass, ranging from 0 to 1\n"\
+    "   pre_steps (:obj:`int`): the simulation steps running without writing to the result\n"\
+    "                    typically this is the simulation steps to reach a steady state\n"\
+    "   run_steps (:obj:`int`): the simulation steps that write to the result\n"\
+    "   jump (:obj:`int`) = 1: every ``jump`` step is writting into the result\n"\
+    "   load_file (:obj:`str`) = "": load initial configuration from a xyz file\n"\
+    "   output_file (:obj:`str`) = "": output running frames into an xyz file\n\n"\
+    "Return:\n"\
+    "   :obj:`numnp.ndarray`: the positions and velocities of particles"\
+    " in each frame, shape (run_steps, n, 6)\n"\
+    ;
+
+
 const char* docstring_vicsek_3d_pbc_inertia_af =\
     "3D Vicsek simulation in PBC with a inertia term with J_ij = -1 (J_ii = 1)\n"\
     " \n\n\n"\
@@ -564,6 +586,29 @@ py::array_t<double> vicsek_3d_pbc_inertia(
 }
 
 
+py::array_t<double> vicsek_2d_pbc_inertia(
+        int n, double box, double eta, double v0, double r, double alpha,
+        int pre_steps, int run_steps, int jump=1,
+        std::string load_file="", std::string dump_file="",
+        bool use_nl=false
+        ){
+    Vicsek2DPBCInertia system{n, r, eta, box, v0, alpha};
+    if (use_nl){
+        int update_step = get_update_step(r, v0);
+        return simulate(
+            system, update_step, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    } else {
+        return simulate_no_nl(
+            system, pre_steps, run_steps, jump,
+            load_file, dump_file
+        );
+    }
+}
+
+
+
 py::array_t<double> vicsek_3d_pbc_inertia_af(
         int n, double box, double eta, double v0, double r, double alpha,
         int pre_steps, int run_steps, int jump=1,
@@ -896,6 +941,16 @@ PYBIND11_MODULE(cmodel, m){
     );
 
     m.def(
+        "vicsek_2d_pbc_inertia",
+        &vicsek_2d_pbc_inertia, docstring_vicsek_2d_pbc_inertia,
+        py::arg("n"), py::arg("box"), py::arg("eta"),
+        py::arg("v0"), py::arg("r"), py::arg("alpha"),
+        py::arg("pre_steps"), py::arg("run_steps"),
+        py::arg("jump")=1, py::arg("load_file")="", py::arg("dump_file")="",
+        py::arg("use_nl")=false
+    );
+
+    m.def(
         "vicsek_3d_pbc_inertia_af",
         &vicsek_3d_pbc_inertia_af, docstring_vicsek_3d_pbc_inertia_af,
         py::arg("n"), py::arg("box"), py::arg("eta"),
@@ -1101,6 +1156,12 @@ PYBIND11_MODULE(cmodel, m){
             py::arg("rebuild")=true
         )
         .def(
+            "move_no_nl", &Vicsek3DPBCInertia::move_no_nl,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+            )---"
+        )
+       .def(
             "evolve", &Vicsek3DPBCInertia::evolve,
             R"---(
             Advance the dynamic, move multiple Monte-Carlo steps
@@ -1140,6 +1201,63 @@ PYBIND11_MODULE(cmodel, m){
             py::return_value_policy::copy
         )
         .def_readonly("dim", &Vicsek3DPBCInertia::dim_);
+
+    py::class_<Vicsek2DPBCInertia>(m, "Vicsek2DPBCInertia")
+        .def(
+            py::init<
+                int, double, double, double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("r"),
+            pybind11::arg("eta"),
+            pybind11::arg("box"),
+            pybind11::arg("v0"),
+            pybind11::arg("alpha")
+        )
+        .def(
+            "move", &Vicsek2DPBCInertia::move,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+
+            Args:
+                rebuild (bool): if true, the neighobur will be\
+                    used to accelerate the calculation.
+            )---",
+            py::arg("rebuild")=true
+        )
+        .def(
+            "move_no_nl", &Vicsek2DPBCInertia::move_no_nl,
+            R"---(
+            Advance the dynamic, move one Monte-Carlo step
+            )---"
+        )
+        .def(
+            "get_polarisation", &Vicsek2DPBCInertia::get_polarisation,
+            "Calculate the polarisation of current state of the system",
+            py::return_value_policy::copy
+        )
+        .def(
+            "get_velocities", &Vicsek2DPBCInertia::get_velocities,
+            "Retrieve the current velocities as numpy array of the system"
+        )
+        .def(
+            "get_positions", &Vicsek2DPBCInertia::get_positions,
+            "Retrieve the current positions as numpy array of the system"
+        )
+        .def(
+            "load_velocities", &Vicsek2DPBCInertia::load_velocities,
+            "Set the current velocities of the system",
+            py::arg("velocities")
+        )
+        .def_property("positions",
+            &Vicsek2DPBCInertia::get_positions, &Vicsek2DPBCInertia::load_positions,
+            py::return_value_policy::copy
+        )
+        .def_property("velocities",
+            &Vicsek2DPBCInertia::get_velocities, &Vicsek2DPBCInertia::load_velocities,
+            py::return_value_policy::copy
+        )
+        .def_readonly("dim", &Vicsek2DPBCInertia::dim_);
 
     py::class_<Network3D>(m, "Network3D")
         .def(
