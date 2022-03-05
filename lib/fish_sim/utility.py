@@ -205,7 +205,7 @@ def animate_active_2d(
             system.move()
 
         scatter.set_offsets(system.positions.T)
-        theta = system.phi / np.pi / 2 + 0.5
+        theta = system.phi / np.pi / 2 + 0.0
         color = cm.twilight(theta)
         scatter.set_facecolor(color)
         if arrow:
@@ -218,7 +218,7 @@ def animate_active_2d(
             raise StopIteration
         return scatter,
 
-    theta = system.phi / np.pi / 2 + 0.5
+    theta = system.phi / np.pi / 2# + 0.5
     color = cm.twilight(theta)
     scatter = ax.scatter(
         *system.positions, marker='o',
