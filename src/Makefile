@@ -2,7 +2,12 @@ prefix = /usr/local
 CC = clang++
 CPPFLAGS = -Wall -O3 -std=c++14 -I.. -I. -I$(prefix)/include -fPIC\
 		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include -I../extern/eigen3
-LINKFLAGS = -lomp
+#LINKFLAGS = -lomp
+
+mcmc: test_mc.cpp montecarlo.o core.o boundary.o
+	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_mc.cpp  montecarlo.o core.o boundary.o
+	./a.out
+	rm a.out
 
 couzin_tank: test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o
 	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o
@@ -28,6 +33,8 @@ network: test_network.cpp vicsek.o neighbour_list.o network.o core.o
 	./a.out
 	rm a.out
 
+montecarlo.o: montecarlo.cpp
+	$(CC) $(CPPFLAGS) -c montecarlo.cpp -o montecarlo.o
 
 couzin.o: couzin.cpp boundary.o
 	$(CC) $(CPPFLAGS) -c couzin.cpp -o couzin.o

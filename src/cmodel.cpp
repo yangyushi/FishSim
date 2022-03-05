@@ -3,6 +3,7 @@
 #include "couzin.hpp"
 #include "network.hpp"
 #include "boundary.hpp"
+#include "montecarlo.hpp"
 #include "neighbour_list.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -1104,7 +1105,6 @@ PYBIND11_MODULE(cmodel, m){
                 py::return_value_policy::copy
         );
 
-
     py::class_<Vicsek3DPBC>(m, "Vicsek3DPBC")
         .def(
             py::init<
@@ -1538,5 +1538,26 @@ PYBIND11_MODULE(cmodel, m){
                numpy.ndarray: the points projected on the bottom of the bowl.
             )---",
             py::arg("x"), py::arg("y"), py::arg("z")
+        );
+
+    py::class_<FishMCMC>(m, "FishMCMC")
+        .def(
+            py::init<
+                size_t, double, double, double, double
+            >(),
+            pybind11::arg("n"),
+            pybind11::arg("beta"),
+            pybind11::arg("si"),
+            pybind11::arg("sh"),
+            pybind11::arg("dx")
+        )
+        .def("sweep", &FishMCMC::sweep)
+        .def("evolve", &FishMCMC::evolve, py::arg("steps"))
+        .def("get_energy", &FishMCMC::get_total_energy)
+        .def("get_positions", &FishMCMC::get_positions)
+        .def("load_positions", &FishMCMC::load_positions)
+        .def_property("positions",
+                &FishMCMC::get_positions, &FishMCMC::load_positions,
+                py::return_value_policy::copy
         );
 }
