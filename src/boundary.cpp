@@ -179,6 +179,11 @@ Vec3D Tank3D::project_single(double x, double y, double z){
     return xyz_proj;
 }
 
+double Tank3D::get_dist_to_tank_single(const Coord3D& xyz){
+    Coord3D proj = this->project(xyz);
+    return (xyz - proj).norm();
+}
+
 
 Vec3D Tank3D::to_rzt(const Vec3D& xyz){
     Vec3D rzt {3, 1};

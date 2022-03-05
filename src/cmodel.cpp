@@ -1525,6 +1525,19 @@ PYBIND11_MODULE(cmodel, m){
             py::arg("xyz")
         )
         .def(
+            "get_dist_to_tank_single", &Tank3D::get_dist_to_tank_single,
+            R"---(
+            Check if a point is inside the tank.
+
+            Args:
+                xyz (numpy.ndarray): the coordinates, shape (3,).
+
+            Return:
+               float: the distance to the tank
+            )---",
+            py::arg("xyz")
+        )
+        .def(
             "project_single", &Tank3D::project_single,
             R"---(
             Generate random points inside the boundary.

@@ -19,6 +19,7 @@ struct Tank3D{
     // for all 3D points, calculate the cloest point on the bottom of the bowl
     Coord3D project(const Coord3D& xyz);
     Vec3D project_single(double x, double y, double z);
+    double get_dist_to_tank_single(const Coord3D& xyz);
 
     // convert xyz coordinate system to r-z-theta coordinates
     Vec3D to_rzt(const Vec3D& xyz);
