@@ -657,7 +657,7 @@ class Vicsek2D(BD):
         self.velocities += self.dt * self.f / self.m  # b propagator
         self.o = self.velocities / np.linalg.norm(self.velocities, axis=0)[None, :]
         self.velocities = self.o * self.v0
-        self.phi = np.arctan2(*self.o)
+        self.phi = np.arctan2(*self.o) + np.pi
 
         self.fix_boundary()
         self.notify()
