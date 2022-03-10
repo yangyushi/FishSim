@@ -180,7 +180,7 @@ def animate(
 def animate_active_2d(
         system, r=100, jump=100, box=None,
         save='', fps=60, show=True, frames=100,
-        repeat=False, title='', arrow=True,
+        repeat=False, title='', arrow=True, circle=True
 ):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     ax = fig.add_subplot()
@@ -204,15 +204,16 @@ def animate_active_2d(
         for _ in range(jump):
             system.move()
 
-        scatter.set_offsets(system.positions.T)
-        theta = system.phi / np.pi / 2 + 0.0
-        color = cm.twilight(theta)
-        scatter.set_facecolor(color)
+        if circle:
+            scatter.set_offsets(system.positions.T)
+            theta = system.phi / np.pi / 2 + 0.0
+            color = cm.twilight(theta)
+            scatter.set_facecolor(color)
         if arrow:
             quiver.set_offsets(system.positions.T)
             quiver.set_UVC(
-                np.cos(system.phi),
-                np.sin(system.phi),
+                -np.sin(system.phi),
+                -np.cos(system.phi),
             )
         if (num == frames - 1) and (not repeat):
             raise StopIteration
@@ -220,14 +221,21 @@ def animate_active_2d(
 
     theta = system.phi / np.pi / 2# + 0.5
     color = cm.twilight(theta)
-    scatter = ax.scatter(
-        *system.positions, marker='o',
-        s=r, color=color, ec='gray', vmin=0, vmax=1, lw=0.5
-    )
+    if circle:
+        scatter = ax.scatter(
+            *system.positions, marker='o',
+            s=r, color=color, ec='gray', vmin=0, vmax=1, lw=0.5
+        )
+    else:
+        scatter = None
     if arrow:
         quiver = ax.quiver(
             *system.positions, np.cos(system.phi), np.sin(system.phi),
-            pivot='mid', units='width', color='k', zorder=5, scale=9000/r,
+            #color=cm.rainbow(np.random.random(system.n)),
+            color='k',
+            pivot='mid', units='width', zorder=5, scale=9000/r,
+            #width=0.01,
+            #headwidth=8, headlength=8,
         )
     ani = FuncAnimationDisposable(
         fig, update, frames=frames, fargs=(scatter, system), interval=1,
