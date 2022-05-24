@@ -35,11 +35,12 @@ def no_overlap(n, r, sigma):
     return np.array(res).T
 
 
+
 @fs.model.Boundary("align_sphere")
 class M(fs.model.Vicsek2D):
     def __init__(self, *arg, **kwarg):
         fs.model.Vicsek2D.__init__(self, *arg, **kwarg)
-        #self.positions = no_overlap(self.n, kwarg['R'] * 1.4, sigma=1.000)
+        self.positions = no_overlap(self.n, kwarg['R'] * 1.4, sigma=1.000)
         #self.positions = mc(self.positions, kwarg['R'] * 1.0, sigma=1.000, dx=0.1)
         #self.force_func = fs.force.force_wca
         #self.force_func = fs.force.force_wca_no_overlap
@@ -47,14 +48,14 @@ class M(fs.model.Vicsek2D):
 
 
 N, dim = 61, 2
-density = 1.1
-alpha = 0.5
-eta = 0.2
+density = 1.0
+alpha = 0.6
+eta = 0.1
 v0 = 0.02
 m = 1e4
 r0 = 1.5
 R = np.power(3 * N / (density * np.pi * 4), 1/2)
-nblock, block = 2, 300
+nblock, block = 5, 30
 frames = nblock * block
 box = (N / density) ** (1 / dim)
 
@@ -66,7 +67,10 @@ obs_dyn = fs.utility.Dynamic(block=block, report=True)
 system.attach(obs_dyn)
 
 
+for _ in range(1000):
+    system.move()
+
 fs.utility.animate_active_2d(
     system, r=500, jump=1, box=(-R * 1.4, R*1.4), show=True, frames=frames,
-    repeat=True, arrow=True,
+    repeat=False, arrow=True, save='disk.gif', fps=30,
 )

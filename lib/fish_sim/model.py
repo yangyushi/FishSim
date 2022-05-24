@@ -25,6 +25,8 @@ class BD():
         sigma = np.sqrt(self.kT / (self.m * self.n))
         self.velocities = np.random.normal(0, sigma, (self.dim, self.n))
 
+        self.phi = np.zeros(self.n)
+
     def get_positions(self):
         return self.positions
 
