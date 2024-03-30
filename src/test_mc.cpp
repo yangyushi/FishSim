@@ -5,6 +5,6 @@ int main(){
     system.evolve(100);
     for (size_t i = 0; i < 100; i++){
         system.sweep();
-        std::cout << "E = " << system.get_total_energy() << std::endl;
     }
+    std::cout << "E = " << system.get_total_energy() << std::endl;
 }

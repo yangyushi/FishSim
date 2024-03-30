@@ -57,11 +57,6 @@ int main(){
          << "[ms]" << std::endl;
     for (int step=0; step < total_steps; step++){
         system.move_in_tank(true);
-        if (step % jump == 0) {
-            std::cout << "mill: " << system.get_mill()
-                      << "; polarisation: " << system.get_polarisation()
-                      << std::endl;
-        }
     }
 
     return 0;

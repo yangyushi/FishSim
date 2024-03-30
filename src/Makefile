@@ -1,37 +1,33 @@
 prefix = /usr/local
-CC = clang++
-CPPFLAGS = -Wall -O3 -std=c++14 -I.. -I. -I$(prefix)/include -fPIC\
-		   -Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include -I../extern/eigen3
-#LINKFLAGS = -lomp
+CC = g++
+CPPFLAGS = -Wall -march=native -O3 -std=c++17 -fPIC \
+		   -I. -I$(prefix)/include -I/usr/local/opt/libomp/include -I../extern/eigen3 \
+		   -fopenmp
+
+all: mcmc couzin_tank couzin vicsek network
+
+test: mcmc couzin_tank couzin vicsek network
+	./mcmc
+	./vicsek
+	./couzin
+	./network
+	./couzin_tank
+	@rm *.xyz
 
 mcmc: test_mc.cpp montecarlo.o core.o boundary.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_mc.cpp  montecarlo.o core.o boundary.o
-	./a.out
-	rm a.out
+	$(CC) $(CPPFLAGS) test_mc.cpp  montecarlo.o core.o boundary.o -o mcmc
 
 couzin_tank: test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o
-	rm -f test_couzin_tank.xyz
-	./a.out
-	rm a.out
-
+	$(CC) $(CPPFLAGS)  test_couzin_tank.cpp couzin.o neighbour_list.o core.o boundary.o -o couzin_tank
 
 couzin: test_couzin.cpp couzin.o neighbour_list.o core.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_couzin.cpp couzin.o neighbour_list.o core.o boundary.o
-	rm -f test_couzin.xyz
-	./a.out
-	rm a.out
+	$(CC) $(CPPFLAGS) test_couzin.cpp couzin.o neighbour_list.o core.o boundary.o -o couzin
 
 vicsek: test_vicsek.cpp vicsek.o neighbour_list.o network.o core.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_vicsek.cpp vicsek.o neighbour_list.o network.o core.o
-	rm -f test.xyz
-	./a.out
-	rm a.out
+	$(CC) $(CPPFLAGS) test_vicsek.cpp vicsek.o neighbour_list.o network.o core.o -o vicsek
 
 network: test_network.cpp vicsek.o neighbour_list.o network.o core.o
-	$(CC) $(CPPFLAGS) $(LINKFLAGS) test_network.cpp vicsek.o neighbour_list.o network.o core.o
-	./a.out
-	rm a.out
+	$(CC) $(CPPFLAGS) test_network.cpp vicsek.o neighbour_list.o network.o core.o -o network
 
 montecarlo.o: montecarlo.cpp
 	$(CC) $(CPPFLAGS) -c montecarlo.cpp -o montecarlo.o
@@ -59,3 +55,7 @@ clean:
 	rm -f *.a
 	rm -f a.out
 	rm -f test.xyz
+	rm mcmc vicsek network couzin couzin_tank
+
+.PHONY:
+	clean test

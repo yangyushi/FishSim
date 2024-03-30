@@ -1,5 +1,6 @@
 let g:ale_linters = {'cpp': ['clang']}  " use clang compiler
 let cpp_flags = '-std=c++14 -Wall '  " c++ standard & show all warnings
+let cpp_flags = cpp_flags . '-I.' . ' '  " for headres
 let cpp_flags = cpp_flags . '-I../extern/eigen3' . ' '  " for eigen
 let cpp_flags = cpp_flags . '-I../extern/pybind11/include' . ' '  " for eigen
 let cpp_flags = cpp_flags . '-I/usr/local/include/python3.7m' . ' '  " for eigen
