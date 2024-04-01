@@ -49,7 +49,7 @@ def plot_phase(
         ax.set_xticks([])
         ax.set_yticks([])
         if not isinstance(box, type(None)):
-            if type(box) == tuple:
+            if type(box) is tuple:
                 ax.set_xlim(*box)
                 ax.set_ylim(*box)
             else:
@@ -64,7 +64,7 @@ def plot_phase(
         ax.set_yticks([])
         ax.set_zticks([])
         if not isinstance(box, type(None)):
-            if type(box) == tuple:
+            if type(box) is tuple:
                 ax.set_xlim(*box)
                 ax.set_ylim(*box)
                 ax.set_zlim(*box)
@@ -107,7 +107,7 @@ def animate(
         ax.set_xticks([])
         ax.set_yticks([])
         if not isinstance(box, type(None)):
-            if type(box) == tuple:
+            if type(box) is tuple:
                 ax.set_xlim(*box)
                 ax.set_ylim(*box)
             else:
@@ -122,7 +122,7 @@ def animate(
         ax.set_yticks([])
         ax.set_zticks([])
         if not isinstance(box, type(None)):
-            if type(box) == tuple:
+            if type(box) is tuple:
                 ax.set_xlim(*box)
                 ax.set_ylim(*box)
                 ax.set_zlim(*box)
@@ -178,9 +178,9 @@ def animate(
 
 
 def animate_active_2d(
-        system, r=100, jump=100, box=None,
-        save='', fps=60, show=True, frames=100,
-        repeat=False, title='', arrow=True, circle=True
+    system, r=100, jump=100, box=None,
+    save='', fps=60, show=True, frames=100,
+    repeat=False, title='', arrow=True, circle=True
 ):
     fig = plt.figure(figsize=(5, 5), tight_layout=True)
     ax = fig.add_subplot()
@@ -188,7 +188,7 @@ def animate_active_2d(
     ax.set_xticks([])
     ax.set_yticks([])
     if not isinstance(box, type(None)):
-        if type(box) == tuple:
+        if type(box) is tuple:
             ax.set_xlim(*box)
             ax.set_ylim(*box)
         else:
@@ -219,7 +219,7 @@ def animate_active_2d(
             raise StopIteration
         return scatter,
 
-    theta = system.phi / np.pi / 2# + 0.5
+    theta = system.phi / np.pi / 2  # + 0.5
     color = cm.twilight(theta)
     if circle:
         scatter = ax.scatter(
@@ -231,11 +231,8 @@ def animate_active_2d(
     if arrow:
         quiver = ax.quiver(
             *system.positions, np.cos(system.phi), np.sin(system.phi),
-            #color=cm.rainbow(np.random.random(system.n)),
             color='k',
             pivot='mid', units='width', zorder=5, scale=9000/r,
-            #width=0.01,
-            #headwidth=8, headlength=8,
         )
     ani = FuncAnimationDisposable(
         fig, update, frames=frames, fargs=(scatter, system), interval=1,
@@ -244,10 +241,11 @@ def animate_active_2d(
     if show:
         plt.show()
     if save:
-        ani.save(save, writer='imagemagick', fps=fps)
+        writer = animation.PillowWriter(fps=fps)
+        ani.save(save, writer=writer)
 
 
-class Observer():
+class Observer:
     def __init__(self, block):
         self.__block = block
         self.__count = 0
@@ -455,7 +453,7 @@ def plot_graph(matrix, ax=None, scale=1):
     assert matrix.ndim == 2, "2D square matrix is needed"
     assert matrix.shape[1] == matrix.shape[0], "2D square matrix is needed"
     n = matrix.shape[0]
-    ax_lim =  1.5 * scale
+    ax_lim = 1.5 * scale
     ax.set_xlim(-ax_lim, ax_lim)
     ax.set_ylim(-ax_lim, ax_lim)
     graph = nx.from_numpy_matrix(matrix, create_using=nx.DiGraph())

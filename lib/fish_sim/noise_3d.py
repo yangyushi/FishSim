@@ -51,7 +51,8 @@ def add_vicsek_noise_3d(phi, theta, eta):
     Generate 3D noise for vicsek model, the procedure is
         1. Generate N random vectores inside a cap on the north pole.
            This corresponds to noise for vector (0, 0, 1)
-           The area of the cap is a fraction of the surface area of the unit sphere
+           The area of the cap is a fraction of the surface area
+               of the unit sphere
            A_cap / A_sphere = eta
         2. Rotate the generated noise with matrix R = F^-1 @ G @ F
            R rotates (0, 0, 1) to direction of different velocity vectors
@@ -62,7 +63,7 @@ def add_vicsek_noise_3d(phi, theta, eta):
         eta (float): the noise for the simulation, ranges from 0 to 1
 
     Returns:
-        (np.ndarray, np.ndarray): ( noisy_azimuth(phi), noisy_elevation(theta) )
+        (np.ndarray, np.ndarray): ( noisy_azimuth(phi), noisy_elevation(theta))
 
     Example:
         >>> phi = np.array((0, 0))
@@ -116,4 +117,3 @@ def to_xyz(velocities):
     y = v0 * np.cos(theta) * np.sin(phi)
     z = v0 * np.sin(theta)
     return np.vstack((x, y, z))
-
